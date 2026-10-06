@@ -18,10 +18,7 @@ public partial class MainWindow : Window
 
         App.VaultState.StateChanged += (_, _) => Dispatcher.Invoke(RefreshState);
 
-        _statusTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(1)
-        };
+        _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statusTimer.Tick += (_, _) => UpdateAutoLockCountdown();
         _statusTimer.Start();
 
@@ -36,39 +33,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new UnlockWindow
-        {
-            Owner = this
-        };
+        var dialog = new UnlockWindow { Owner = this };
 
         if (dialog.ShowDialog() == true)
-        {
             App.VaultState.UnlockPreview();
-        }
     }
 
     public void OpenSettings()
     {
-        var dialog = new SettingsWindow
-        {
-            Owner = this
-        };
-
+        var dialog = new SettingsWindow { Owner = this };
         dialog.ShowDialog();
         RefreshState();
     }
 
-    public void AllowApplicationExit()
-    {
-        _allowApplicationExit = true;
-    }
+    public void AllowApplicationExit() => _allowApplicationExit = true;
 
     private void UnlockButton_Click(object sender, RoutedEventArgs e) => BeginUnlock();
 
-    private void LockButton_Click(object sender, RoutedEventArgs e)
-    {
+    private void LockButton_Click(object sender, RoutedEventArgs e) =>
         App.VaultState.Lock("Manual lock");
-    }
 
     private void OpenVaultButton_Click(object sender, RoutedEventArgs e)
     {
@@ -80,7 +63,7 @@ public partial class MainWindow : Window
 
         MessageBox.Show(
             this,
-            "The encrypted virtual-drive mount will be connected in the storage/filesystem milestone. This alpha currently demonstrates the control workflow only.",
+            "Your password has been verified, but the encrypted virtual-drive engine is not connected yet. No protected file storage is exposed in this alpha.",
             "Rice2k Folder Vault",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
@@ -97,8 +80,8 @@ public partial class MainWindow : Window
             (Color)ColorConverter.ConvertFromString(unlocked ? "#1E6B3A" : "#5A2530"));
 
         StatusDetailText.Text = unlocked
-            ? "Vault control session is open. Encryption/mount engine is not connected in this alpha."
-            : "Vault contents are not mounted.";
+            ? "Password verified. Encrypted storage/mount engine is not yet enabled."
+            : "Vault session is locked.";
 
         UnlockButton.IsEnabled = !unlocked;
         OpenVaultButton.IsEnabled = unlocked;
@@ -129,15 +112,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        AutoLockText.Text = $"Preview auto-lock in {remaining.Value:mm\\:ss}";
+        AutoLockText.Text = $"Auto-lock in {remaining.Value:mm\:ss}";
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
         if (_allowApplicationExit)
-        {
             return;
-        }
 
         e.Cancel = true;
         Hide();

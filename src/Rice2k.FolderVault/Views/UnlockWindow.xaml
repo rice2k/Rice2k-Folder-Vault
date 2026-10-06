@@ -35,10 +35,10 @@
                       Checked="ShowPasswordCheckBox_Changed"
                       Unchecked="ShowPasswordCheckBox_Changed"/>
 
-            <Border Background="#392F16" BorderBrush="#765F1B" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,16,0,0">
-                <TextBlock Text="Alpha preview: password validation is not active until the encrypted vault engine is connected."
+            <Border Background="#13253C" BorderBrush="#29496F" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,16,0,0">
+                <TextBlock Text="Password verification is active. Encrypted file storage and drive mounting are still under development in this alpha."
                            TextWrapping="Wrap"
-                           Foreground="#F0CF72"
+                           Foreground="#BFD8F7"
                            FontSize="12"/>
             </Border>
         </StackPanel>

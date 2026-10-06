@@ -33,7 +33,7 @@ Rice2k Folder Vault separates the WPF interface, Windows lifecycle integration, 
 +---------------------------------------------------+
 ```
 
-## Current implementation — v0.2.1-alpha
+## Current implementation — v0.2.2-alpha
 
 Implemented:
 
@@ -51,12 +51,13 @@ Implemented:
 - authenticated file export
 - password re-wrap engine
 - Vault Contents alpha UI
+- encrypted metadata rename
+- delete with encrypted FILE record compaction
+- manual orphan-record compaction
 - storage/crypto self-tests
 
 Still pending:
 
-- password-change UI
-- rename/delete/compaction
 - nested directory UI
 - crash-safe transaction/journal design
 - virtual filesystem mounting

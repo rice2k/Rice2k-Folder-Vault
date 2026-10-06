@@ -133,7 +133,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        AutoLockText.Text = $"Auto-lock in {remaining.Value:mm\:ss}";
+        AutoLockText.Text = "Auto-lock in " + remaining.Value.ToString(@"mm\\:ss");
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)

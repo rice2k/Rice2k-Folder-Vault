@@ -1,6 +1,6 @@
 # Security Design
 
-> Status: **pre-production v0.2.1 alpha.** Header, metadata and persistent file records are encrypted/authenticated, but filesystem mounting, transactional crash safety, recovery, and independent review are incomplete.
+> Status: **pre-production v0.2.2 alpha.** Header, metadata and persistent file records are encrypted/authenticated, but filesystem mounting, transactional crash safety, recovery, and independent review are incomplete.
 
 ## Security objective
 
@@ -75,6 +75,8 @@ The self-test currently exercises:
 - empty-file round trip
 - persistent import/export
 - duplicate-name rejection
+- rename with content preserved
+- deletion/record compaction with retained content preserved
 - password re-wrap with content preserved
 
 ## Memory limitations

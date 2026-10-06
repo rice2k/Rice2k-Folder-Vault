@@ -19,7 +19,7 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         App.VaultState.StateChanged += (_, _) => Dispatcher.Invoke(RefreshState);
-        App.VaultMounts.StateChanged += (_, _) => Dispatcher.Invoke(RefreshState);
+        App.VaultMounts.StateChanged += (_, _) => Dispatcher.BeginInvoke(RefreshState);
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statusTimer.Tick += (_, _) => UpdateAutoLockCountdown();

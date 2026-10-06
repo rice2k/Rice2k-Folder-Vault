@@ -45,7 +45,7 @@ public partial class App : Application
         ConfigureTrayIcon();
 
         VaultState.StateChanged += (_, _) => Dispatcher.Invoke(RefreshTrayState);
-        VaultMounts.StateChanged += (_, _) => Dispatcher.Invoke(RefreshTrayState);
+        VaultMounts.StateChanged += (_, _) => Dispatcher.BeginInvoke(RefreshTrayState);
 
         _mainWindow.Show();
         RefreshTrayState();

@@ -14,22 +14,28 @@
 
 ## v0.2.x — Vault format and cryptography
 
-- [ ] Define and freeze vault header format
-- [ ] Generate a random 256-bit vault master key
-- [ ] Password-based key derivation using Argon2id
-- [ ] Encrypt/wrap master key with the derived key
-- [ ] Authenticated encryption for vault metadata and contents
-- [ ] Password change by re-wrapping the master key instead of re-encrypting all user data
+- [ ] Freeze the vault header format for stable compatibility
+- [x] Define versioned v1-alpha `.rvault` header
+- [x] Generate a random 256-bit Vault Master Key
+- [x] Password-based key derivation using Argon2id
+- [x] Encrypt/wrap the master key with AES-256-GCM
+- [x] HKDF-SHA256 subkey derivation from the VMK
+- [x] Encrypted/authenticated vault metadata segment
+- [x] Chunked authenticated file-content encryption service
+- [ ] Persist FILE records and metadata updates inside the container
+- [x] Password change by re-wrapping the master key instead of re-encrypting payload data
 - [ ] Optional recovery-key wrapping slot
-- [ ] Corruption/tamper detection
-- [ ] Automated cryptographic format tests
+- [x] Header/metadata/content corruption and tamper checks
+- [x] Dependency-light cryptographic self-test project
+- [ ] Verify CI execution once GitHub-hosted runner issue is resolved
 
 ## v0.3.x — Windows filesystem integration
 
 - [ ] Integrate a proven Windows virtual-filesystem layer
 - [ ] Mount unlocked vault as a Windows drive
 - [ ] Explorer drag/drop, copy, rename, folders, delete
-- [ ] Read/write streaming encryption
+- [x] Chunked read/write streaming encryption primitive
+- [ ] Connect streaming encryption to persistent vault records
 - [ ] Open-file tracking
 - [ ] Safe flush and unmount
 - [ ] Read-only recovery mount
@@ -51,7 +57,7 @@
 - [ ] Print/save recovery-key workflow
 - [ ] Vault health check
 - [ ] Backup/export workflow
-- [ ] Multiple vaults
+- [ ] Multiple-vault management UI
 - [ ] Portable/removable-drive vault option
 - [ ] Custom per-vault icons and names
 

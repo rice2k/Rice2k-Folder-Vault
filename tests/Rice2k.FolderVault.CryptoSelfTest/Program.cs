@@ -175,6 +175,95 @@ internal static class Program
                 var sizeAfterCompact = new FileInfo(path).Length;
                 Assert(sizeAfterCompact <= sizeBeforeCompact, "Compaction unexpectedly increased vault size.");
 
+                var documentsDirectory = containers.CreateDirectory(
+                    path,
+                    session,
+                    containers.ReadMetadata(path, session).RootDirectoryId,
+                    "Documents");
+
+                var privateDirectory = containers.CreateDirectory(
+                    path,
+                    session,
+                    documentsDirectory.EntryId,
+                    "Private");
+
+                var nestedPath = containers.GetDirectoryPath(
+                    containers.ReadMetadata(path, session),
+                    privateDirectory.EntryId);
+                Assert(nestedPath == @"\Documents\Private", "Nested encrypted directory path was not resolved correctly.");
+
+                var nestedImported = containers.ImportFileToDirectory(
+                    path,
+                    session,
+                    sourcePath,
+                    privateDirectory.EntryId,
+                    "inside.bin");
+
+                var nestedEntries = containers.ListDirectory(path, session, privateDirectory.EntryId);
+                Assert(nestedEntries.Count == 1, "Nested directory did not contain the imported file.");
+                Assert(nestedEntries[0].EntryId == nestedImported.EntryId, "Nested file entry identifier changed.");
+
+                var nestedExportPath = Path.Combine(root, "nested-export.bin");
+                containers.ExportFileByEntryId(
+                    path,
+                    session,
+                    nestedImported.EntryId,
+                    nestedExportPath);
+
+                var nestedExportBytes = File.ReadAllBytes(nestedExportPath);
+                try
+                {
+                    Assert(importBytes.AsSpan().SequenceEqual(nestedExportBytes),
+                        "Nested encrypted file did not round-trip exactly.");
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(nestedExportBytes);
+                }
+
+                containers.RenameEntry(
+                    path,
+                    session,
+                    privateDirectory.EntryId,
+                    "Secure");
+
+                var renamedNestedPath = containers.GetDirectoryPath(
+                    containers.ReadMetadata(path, session),
+                    privateDirectory.EntryId);
+                Assert(renamedNestedPath == @"\Documents\Secure", "Nested encrypted folder rename was not persisted.");
+
+                var nonRecursiveDeleteRejected = false;
+                try
+                {
+                    containers.DeleteEntry(
+                        path,
+                        session,
+                        documentsDirectory.EntryId,
+                        recursive: false);
+                }
+                catch (IOException)
+                {
+                    nonRecursiveDeleteRejected = true;
+                }
+
+                Assert(nonRecursiveDeleteRejected, "Non-recursive deletion unexpectedly removed a non-empty folder.");
+
+                var beforeRecursiveDelete = new FileInfo(path).Length;
+                containers.DeleteEntry(
+                    path,
+                    session,
+                    documentsDirectory.EntryId,
+                    recursive: true);
+
+                var afterRecursiveDelete = new FileInfo(path).Length;
+                var metadataAfterRecursiveDelete = containers.ReadMetadata(path, session);
+                Assert(metadataAfterRecursiveDelete.Entries.Count == 1,
+                    "Recursive folder deletion did not remove nested metadata.");
+                Assert(metadataAfterRecursiveDelete.Entries[0].Name == "inside.bin",
+                    "Recursive folder deletion damaged the root file entry.");
+                Assert(afterRecursiveDelete < beforeRecursiveDelete,
+                    "Recursive folder deletion did not compact nested encrypted content.");
+
                 TestStoredFileTamper(containers, path, originalPassword, root);
             }
             finally

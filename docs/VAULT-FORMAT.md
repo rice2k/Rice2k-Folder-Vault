@@ -1,10 +1,8 @@
 # Rice2k Folder Vault Format
 
-> Status: **v1 alpha format for application v0.2.x.** The format is versioned but is **not frozen for stable releases yet**.
+> Status: **v1 alpha format for application v0.2.x.** It is versioned but not frozen for stable releases.
 
 ## Container layout
-
-A `.rvault` file currently uses this outer layout:
 
 ```text
 +------------------------------+
@@ -16,86 +14,64 @@ A `.rvault` file currently uses this outer layout:
 +------------------------------+
 | META encrypted segment       |
 +------------------------------+
-| FILE encrypted records       |  <- service implemented; container integration pending
+| FILE encrypted record #1     |
++------------------------------+
+| FILE encrypted record #2     |
++------------------------------+
 | ...                          |
 +------------------------------+
 ```
 
-The outer header intentionally contains only information needed to derive the password key and unwrap the Vault Master Key. Protected filenames, directory names, and user content must not appear there.
+The header exposes only the information needed to derive the password key and authenticate/unwrap the VMK. Filenames, directory metadata, and file contents are encrypted.
 
-## Header fields
+## Header
 
-The current header contains:
+The v1-alpha header contains:
 
 - format version
-- random 128-bit vault identifier
-- cipher-suite identifier
-- KDF identifier
-- Argon2id parameters
-- random 256-bit KDF salt
-- AES-GCM nonce for the wrapped Vault Master Key
-- wrapped 256-bit Vault Master Key ciphertext
-- AES-GCM authentication tag
+- random 128-bit vault ID
+- cipher-suite ID
+- KDF ID and parameters
+- random 256-bit Argon2id salt
+- AES-GCM nonce
+- wrapped 256-bit VMK ciphertext
+- AES-GCM tag
 
 Current identifiers:
 
 - format version: `1`
-- cipher suite: `AES-256-GCM`
+- cipher: `AES-256-GCM`
 - KDF: `argon2id`
 
-Current default Argon2id settings:
+Current default Argon2id parameters:
 
 - memory: 65,536 KiB
 - iterations: 4
 - parallelism: 2
 
-These parameters are stored per vault so later versions can evolve them.
-
 ## Key hierarchy
 
 ```text
-User password
-     |
-     v
-  Argon2id + per-vault salt
-     |
-     v
+Password
+   |
+Argon2id + per-vault salt
+   |
+   v
 Key Encryption Key (KEK)
-     |
-     | AES-256-GCM unwrap
-     v
-Vault Master Key (VMK) -- random 256 bits
-     |
-     +--> HKDF-SHA256 metadata key
-     |
-     +--> HKDF-SHA256 per-file content key
+   |
+AES-256-GCM unwrap
+   |
+   v
+Random 256-bit Vault Master Key (VMK)
+   |
+   +--> HKDF-SHA256 metadata key
+   |
+   +--> HKDF-SHA256 per-content-record key
 ```
 
-Changing a password generates a new KDF salt and KEK, then re-wraps the same VMK. Encrypted metadata and future encrypted file records do not need to be re-encrypted merely because the password changes.
-
-## Header authentication
-
-The wrapped VMK uses AES-256-GCM.
-
-Associated data binds the wrapped key to:
-
-- Rice2k Folder Vault format identity
-- format version
-- vault identifier
-- cipher-suite identifier
-- KDF identifier
-- KDF memory setting
-- KDF iteration setting
-- KDF parallelism setting
-- KDF salt
-
-Changing any of those fields without the correct encryption key causes master-key authentication to fail.
+Changing the password creates a new password-derived KEK and re-wraps the same VMK. Existing META and FILE ciphertext remains unchanged.
 
 ## META segment
-
-Every newly-created v0.2 vault contains one encrypted metadata segment.
-
-Layout:
 
 ```text
 4 bytes   "META"
@@ -106,38 +82,34 @@ Layout:
 N bytes   encrypted metadata JSON
 ```
 
-The metadata encryption key is derived from the VMK with HKDF-SHA256 and vault-specific context.
-
-Protected metadata currently models:
+Encrypted metadata models:
 
 - metadata revision
-- root directory identifier
-- file/directory entry identifiers
-- parent directory identifiers
+- root directory ID
+- entry IDs
+- parent directory IDs
 - filenames
-- entry type
-- plaintext file length
+- file/directory type
+- plaintext logical length
 - last-write timestamp
-- encrypted content-record identifier
+- FILE content-record ID
 
-A new vault starts with an encrypted empty metadata tree.
+On import, the container is rewritten with a new authenticated META segment and the prior FILE records plus the newly encrypted FILE record.
 
-## FILE record
+## FILE records
 
-The content encryption service implements a streaming file-record format for future container integration.
-
-Record header:
+Each persistent encrypted file record begins with:
 
 ```text
 4 bytes   "FILE"
 4 bytes   record version (LE)
-16 bytes  random content-record identifier
+16 bytes  random content-record ID
 4 bytes   chunk size (LE)
 8 bytes   total plaintext length (LE)
 4 bytes   chunk count (LE)
 ```
 
-Each encrypted chunk contains:
+Each chunk contains:
 
 ```text
 4 bytes   chunk index (LE)
@@ -149,50 +121,92 @@ N bytes   ciphertext
 
 Default chunk size is 1 MiB.
 
-Each file record receives its own HKDF-SHA256-derived content key. Chunk authentication binds the ciphertext to the vault ID, content-record ID, chunk index, chunk length, and total plaintext file length.
+Each FILE record gets a domain-separated HKDF-SHA256 content key derived from the VMK. Chunk AAD binds:
 
-This prevents undetected chunk modification or reordering.
+- vault ID
+- content-record ID
+- chunk index
+- chunk length
+- total plaintext file length
+
+Tampering or reordering is detected when the affected FILE record is read.
+
+## Import
+
+Current v0.2.1 import sequence:
+
+1. stream the source file into an encrypted temporary FILE record
+2. open/authenticate the current vault
+3. decrypt metadata in memory
+4. reject conflicting root filenames
+5. add the encrypted FILE record ID and protected file information to metadata
+6. write a temporary encrypted container containing:
+   - current header
+   - newly encrypted META segment
+   - existing FILE records
+   - new encrypted FILE record
+7. flush and replace the original container
+
+No plaintext staging file is created by the import operation.
+
+## Export
+
+Current export sequence:
+
+1. authenticate/decrypt META
+2. find the requested protected filename
+3. scan FILE record headers until its content-record ID is located
+4. authenticate/decrypt chunks into a temporary plaintext export file
+5. verify the logical length
+6. finalize the requested destination path
+
+The plaintext export and its partial file are intentionally outside the vault security boundary.
 
 ## Password change
 
-Password changes use an atomic temporary-container rewrite:
+1. authenticate/unwrap the VMK
+2. authenticate META
+3. create a new Argon2id salt/KEK
+4. wrap the same VMK
+5. write a replacement header
+6. copy META and FILE ciphertext unchanged
+7. replace the original container
 
-1. authenticate and unwrap the existing VMK
-2. authenticate the encrypted metadata
-3. derive a new password KEK using a new salt
-4. wrap the same VMK with the new KEK
-5. write the replacement header
-6. copy the encrypted payload unchanged
-7. replace the old container
+## Authentication scope
+
+Unlock authenticates:
+
+- the wrapped VMK/header context
+- the META segment
+
+FILE records are individually authenticated when accessed. This avoids decrypting every stored file merely to unlock a large vault. A corrupted unused FILE record can therefore remain undiscovered until a health check or read accesses it.
 
 ## Current implementation boundary
 
-Implemented in v0.2.0-alpha:
+Implemented in v0.2.1-alpha:
 
-- versioned `.rvault` header
+- versioned header
 - Argon2id password KDF
-- random 256-bit VMK
-- AES-256-GCM VMK wrapping
-- encrypted/authenticated metadata segment
-- HKDF-SHA256 metadata subkey
-- chunked AES-256-GCM file-content service
-- HKDF-SHA256 per-file subkeys
+- AES-GCM VMK wrapping
+- encrypted META
+- persistent encrypted FILE records
+- encrypted import
+- authenticated export
 - password re-wrap
-- header and metadata tamper checks
-- dependency-light crypto self-test project
+- tamper tests
+- alpha Vault Contents UI
 
 Not yet implemented:
 
-- adding FILE records to the persistent container from the application UI
-- metadata updates for imported files
-- record indexing/compaction
-- crash-safe transactional file updates beyond header rewrite
+- rename/delete/compaction
+- nested directories in the UI
+- random-access filesystem callbacks
+- crash-safe journal/transaction format
 - recovery-key slots
-- Explorer virtual-drive mounting
+- Explorer virtual-drive mount
+- stable-format freeze
 - production security review
 
 ## Compatibility rule
 
-Application version and vault-format version are separate.
-
-Stable releases must not silently reinterpret existing format fields. Any future incompatible vault-format change requires a new explicit format version and a tested migration/recovery path.
+Application version and vault-format version are separate. Incompatible vault-format changes require a new explicit format version and tested migration/recovery behavior.

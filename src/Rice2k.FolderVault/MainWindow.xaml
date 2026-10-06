@@ -31,7 +31,7 @@
                 <StackPanel Grid.Row="2">
                     <Button Content="Home" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,10"/>
                     <Button Content="Settings" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,10" Click="SettingsButton_Click"/>
-                    <Button Content="Vault Manager" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="False" Margin="0,0,0,10"/>
+                    <Button x:Name="VaultManagerButton" Content="Vault Contents" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="False" Margin="0,0,0,10" Click="VaultManagerButton_Click"/>
                 </StackPanel>
 
                 <StackPanel Grid.Row="3">
@@ -102,8 +102,8 @@
                     <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18">
                         <StackPanel>
                             <TextBlock Text="Vault Engine" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
-                            <TextBlock Text="Header protection active" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                            <TextBlock Text="Encrypted file payload is the next v0.2 milestone" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="Encrypted file storage active" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                            <TextBlock Text="Alpha import/export active; Explorer mount is next" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -111,7 +111,7 @@
                 <Border Margin="0,18,0,0" Background="#17233A" BorderBrush="#2C4265" BorderThickness="1" CornerRadius="10" Padding="18">
                     <StackPanel>
                         <TextBlock Text="v0.2 alpha security notice" FontWeight="SemiBold"/>
-                        <TextBlock Text="The .rvault header now protects a random master key with Argon2id and AES-256-GCM. User-file payload encryption and Explorer mounting are not implemented yet. Continue using disposable test data only."
+                        <TextBlock Text="The .rvault header, metadata, and imported file records are encrypted and authenticated. The Explorer virtual-drive layer, crash hardening, recovery keys, and security review are not complete. Continue using disposable test data and backups."
                                    TextWrapping="Wrap"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Margin="0,7,0,0"/>

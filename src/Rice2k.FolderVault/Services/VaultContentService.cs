@@ -257,6 +257,215 @@ public sealed class VaultContentService
         }
     }
 
+    public bool TryReadContentRange(
+        Stream source,
+        VaultHeader header,
+        VaultSessionKey sessionKey,
+        string expectedRecordIdBase64,
+        long offset,
+        Span<byte> destination,
+        out int bytesRead,
+        out VaultContentRecordInfo? recordInfo)
+    {
+        if (source is null)
+            throw new ArgumentNullException(nameof(source));
+        if (header is null)
+            throw new ArgumentNullException(nameof(header));
+        if (sessionKey is null)
+            throw new ArgumentNullException(nameof(sessionKey));
+        if (!source.CanRead || !source.CanSeek)
+            throw new ArgumentException("Range reads require a readable, seekable source stream.", nameof(source));
+        if (string.IsNullOrWhiteSpace(expectedRecordIdBase64))
+            throw new ArgumentException("A content-record identifier is required.", nameof(expectedRecordIdBase64));
+        if (offset < 0)
+            throw new ArgumentOutOfRangeException(nameof(offset));
+
+        bytesRead = 0;
+        recordInfo = null;
+
+        while (source.Position < source.Length)
+        {
+            var recordStart = source.Position;
+            var inspected = InspectAndSkipEncryptedContent(source);
+
+            if (!string.Equals(inspected.RecordIdBase64, expectedRecordIdBase64, StringComparison.Ordinal))
+                continue;
+
+            source.Position = recordStart;
+            recordInfo = ReadContentRangeAtCurrentRecord(
+                source,
+                header,
+                sessionKey,
+                expectedRecordIdBase64,
+                offset,
+                destination,
+                out bytesRead);
+            return true;
+        }
+
+        return false;
+    }
+
+    private VaultContentRecordInfo ReadContentRangeAtCurrentRecord(
+        Stream source,
+        VaultHeader header,
+        VaultSessionKey sessionKey,
+        string expectedRecordIdBase64,
+        long offset,
+        Span<byte> destination,
+        out int bytesRead)
+    {
+        bytesRead = 0;
+
+        Span<byte> magic = stackalloc byte[4];
+        ReadExactly(source, magic);
+        if (!magic.SequenceEqual(RecordMagic))
+            throw new InvalidDataException("Encrypted file record signature is invalid.");
+
+        var version = ReadInt32(source);
+        if (version != RecordVersion)
+            throw new InvalidDataException($"Unsupported encrypted file-record version: {version}.");
+
+        var recordId = new byte[RecordIdSize];
+        ReadExactly(source, recordId);
+
+        var expectedRecordId = Convert.FromBase64String(expectedRecordIdBase64);
+        try
+        {
+            if (!CryptographicOperations.FixedTimeEquals(recordId, expectedRecordId))
+                throw new InvalidDataException("Encrypted file record identifier does not match metadata.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(expectedRecordId);
+        }
+
+        var chunkSize = ReadInt32(source);
+        var plaintextLength = ReadInt64(source);
+        var chunkCount = ReadInt32(source);
+
+        if (chunkSize <= 0 || chunkSize > MaximumChunkSize)
+            throw new InvalidDataException("Encrypted file chunk size is invalid.");
+        if (plaintextLength < 0)
+            throw new InvalidDataException("Encrypted file plaintext length is invalid.");
+
+        var expectedChunkCount = plaintextLength == 0
+            ? 0L
+            : (plaintextLength + chunkSize - 1) / chunkSize;
+
+        if (chunkCount < 0 || chunkCount != expectedChunkCount)
+            throw new InvalidDataException("Encrypted file chunk count is invalid.");
+
+        var info = new VaultContentRecordInfo
+        {
+            RecordIdBase64 = Convert.ToBase64String(recordId),
+            PlaintextLength = plaintextLength,
+            ChunkSize = chunkSize,
+            ChunkCount = chunkCount
+        };
+
+        if (destination.Length == 0 || offset >= plaintextLength)
+        {
+            CryptographicOperations.ZeroMemory(recordId);
+            return info;
+        }
+
+        var readableLength = Math.Min((long)destination.Length, plaintextLength - offset);
+        var requestedEnd = offset + readableLength;
+
+        var vaultId = Convert.FromBase64String(header.VaultIdBase64);
+        var contentKey = DeriveContentKey(sessionKey, vaultId, recordId);
+        long currentPlaintextOffset = 0;
+
+        try
+        {
+            for (var expectedIndex = 0; expectedIndex < chunkCount; expectedIndex++)
+            {
+                var chunkIndex = ReadInt32(source);
+                var currentLength = ReadInt32(source);
+
+                if (chunkIndex != expectedIndex)
+                    throw new InvalidDataException("Encrypted file chunks are out of order.");
+                if (currentLength <= 0 || currentLength > chunkSize)
+                    throw new InvalidDataException("Encrypted file chunk length is invalid.");
+                if (currentPlaintextOffset + currentLength > plaintextLength)
+                    throw new InvalidDataException("Encrypted file exceeds declared plaintext length.");
+
+                var chunkStart = currentPlaintextOffset;
+                var chunkEnd = chunkStart + currentLength;
+                var overlaps = chunkEnd > offset && chunkStart < requestedEnd;
+
+                if (!overlaps)
+                {
+                    SkipExactly(
+                        source,
+                        VaultCryptoService.AesGcmNonceSize +
+                        VaultCryptoService.AesGcmTagSize +
+                        currentLength);
+                }
+                else
+                {
+                    var nonce = new byte[VaultCryptoService.AesGcmNonceSize];
+                    var tag = new byte[VaultCryptoService.AesGcmTagSize];
+                    var ciphertext = new byte[currentLength];
+                    var plaintext = new byte[currentLength];
+
+                    ReadExactly(source, nonce);
+                    ReadExactly(source, tag);
+                    ReadExactly(source, ciphertext);
+
+                    var aad = BuildChunkAssociatedData(
+                        vaultId,
+                        recordId,
+                        chunkIndex,
+                        currentLength,
+                        plaintextLength);
+
+                    try
+                    {
+                        using var aes = new AesGcm(contentKey, VaultCryptoService.AesGcmTagSize);
+                        aes.Decrypt(nonce, ciphertext, tag, plaintext, aad);
+
+                        var copyStart = Math.Max(offset, chunkStart);
+                        var copyEnd = Math.Min(requestedEnd, chunkEnd);
+                        var sourceOffset = checked((int)(copyStart - chunkStart));
+                        var destinationOffset = checked((int)(copyStart - offset));
+                        var copyLength = checked((int)(copyEnd - copyStart));
+
+                        plaintext.AsSpan(sourceOffset, copyLength)
+                            .CopyTo(destination.Slice(destinationOffset, copyLength));
+
+                        bytesRead += copyLength;
+                    }
+                    finally
+                    {
+                        CryptographicOperations.ZeroMemory(nonce);
+                        CryptographicOperations.ZeroMemory(tag);
+                        CryptographicOperations.ZeroMemory(ciphertext);
+                        CryptographicOperations.ZeroMemory(plaintext);
+                        CryptographicOperations.ZeroMemory(aad);
+                    }
+                }
+
+                currentPlaintextOffset = chunkEnd;
+
+                if (currentPlaintextOffset >= requestedEnd)
+                    break;
+            }
+
+            if (bytesRead != readableLength)
+                throw new InvalidDataException("Encrypted range read returned an unexpected number of bytes.");
+
+            return info;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(recordId);
+            CryptographicOperations.ZeroMemory(vaultId);
+            CryptographicOperations.ZeroMemory(contentKey);
+        }
+    }
+
     public VaultContentRecordInfo InspectAndSkipEncryptedContent(Stream source)
     {
         if (source is null)

@@ -36,8 +36,8 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="3">
-                    <TextBlock Text="v0.2.3-alpha" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
-                    <TextBlock Text="Encrypted folders + file storage alpha" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                    <TextBlock Text="v0.3.0-alpha" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                    <TextBlock Text="Read-only Explorer drive alpha" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -78,7 +78,9 @@
 
                             <WrapPanel Margin="0,20,0,0">
                                 <Button x:Name="UnlockButton" Content="Unlock Vault" Style="{StaticResource PrimaryButtonStyle}" Click="UnlockButton_Click" Margin="0,0,10,8"/>
-                                <Button x:Name="OpenVaultButton" Content="Open Vault" Style="{StaticResource SecondaryButtonStyle}" Click="OpenVaultButton_Click" Margin="0,0,10,8" IsEnabled="False"/>
+                                <Button x:Name="OpenVaultButton" Content="Vault Contents" Style="{StaticResource SecondaryButtonStyle}" Click="OpenVaultButton_Click" Margin="0,0,10,8" IsEnabled="False"/>
+                                <Button x:Name="MountDriveButton" Content="Mount Explorer Drive" Style="{StaticResource PrimaryButtonStyle}" Click="MountDriveButton_Click" Margin="0,0,10,8" IsEnabled="False"/>
+                                <Button x:Name="UnmountDriveButton" Content="Unmount Drive" Style="{StaticResource SecondaryButtonStyle}" Click="UnmountDriveButton_Click" Margin="0,0,10,8" IsEnabled="False"/>
                                 <Button x:Name="LockButton" Content="Lock Now" Style="{StaticResource SecondaryButtonStyle}" Click="LockButton_Click" Margin="0,0,10,8" IsEnabled="False"/>
                             </WrapPanel>
                         </StackPanel>
@@ -94,9 +96,9 @@
 
                     <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18">
                         <StackPanel>
-                            <TextBlock Text="Mount Point" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
-                            <TextBlock Text="V:" FontSize="24" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                            <TextBlock Text="Planned virtual drive" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="Explorer Drive" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                            <TextBlock x:Name="MountPointText" Text="V:" FontSize="24" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                            <TextBlock x:Name="MountDetailText" Text="Not mounted" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
 
@@ -104,15 +106,15 @@
                         <StackPanel>
                             <TextBlock Text="Vault Engine" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                             <TextBlock Text="Encrypted file storage active" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                            <TextBlock Text="Encrypted folder/file manager active; Explorer mount is next" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="Read-only Explorer mount foundation added" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
                 <Border Margin="0,18,0,0" Background="#17233A" BorderBrush="#2C4265" BorderThickness="1" CornerRadius="10" Padding="18">
                     <StackPanel>
-                        <TextBlock Text="v0.2.3 alpha security notice" FontWeight="SemiBold"/>
-                        <TextBlock Text="The .rvault header, metadata, and imported file records are encrypted and authenticated. The Explorer virtual-drive layer, crash hardening, recovery keys, and security review are not complete. Continue using disposable test data and backups."
+                        <TextBlock Text="v0.3.0 alpha security notice" FontWeight="SemiBold"/>
+                        <TextBlock Text="The .rvault header, metadata, and file records remain encrypted and authenticated. The v0.3 Explorer drive is intentionally read-only while mounted; writable filesystem transactions, crash hardening, recovery keys, and security review are not complete. Continue using disposable test data and backups."
                                    TextWrapping="Wrap"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Margin="0,7,0,0"/>

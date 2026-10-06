@@ -18,6 +18,7 @@ public partial class App : Application
     private Forms.NotifyIcon? _trayIcon;
     private Forms.ToolStripMenuItem? _openOrUnlockItem;
     private Forms.ToolStripMenuItem? _lockItem;
+    private Forms.ToolStripMenuItem? _vaultManagerItem;
     private MainWindow? _mainWindow;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -53,6 +54,13 @@ public partial class App : Application
         _lockItem = new Forms.ToolStripMenuItem("Lock Now");
         _lockItem.Click += (_, _) => VaultState.Lock("Manual lock from system tray");
 
+        _vaultManagerItem = new Forms.ToolStripMenuItem("Vault Contents...");
+        _vaultManagerItem.Click += (_, _) =>
+        {
+            EnsureMainWindowVisible();
+            _mainWindow?.OpenVaultManager();
+        };
+
         var settingsItem = new Forms.ToolStripMenuItem("Settings...");
         settingsItem.Click += (_, _) =>
         {
@@ -69,6 +77,7 @@ public partial class App : Application
 
         menu.Items.Add(_openOrUnlockItem);
         menu.Items.Add(_lockItem);
+        menu.Items.Add(_vaultManagerItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(settingsItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -91,6 +100,8 @@ public partial class App : Application
 
         if (requestUnlock)
             _mainWindow?.BeginUnlock();
+        else if (VaultState.IsUnlocked)
+            _mainWindow?.OpenVaultManager();
     }
 
     private void EnsureMainWindowVisible()
@@ -120,6 +131,9 @@ public partial class App : Application
 
         if (_lockItem is not null)
             _lockItem.Enabled = VaultState.IsUnlocked;
+
+        if (_vaultManagerItem is not null)
+            _vaultManagerItem.Enabled = VaultState.IsUnlocked;
 
         _trayIcon.Text = VaultState.IsUnlocked
             ? "Rice2k Folder Vault — Unlocked"

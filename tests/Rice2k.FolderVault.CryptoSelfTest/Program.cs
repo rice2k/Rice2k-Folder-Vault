@@ -111,6 +111,70 @@ internal static class Program
 
                 Assert(duplicateNameRejected, "Duplicate root filename was accepted.");
 
+                containers.RenameRootFile(path, session, "inside.bin", "renamed.bin");
+                var metadataAfterRename = containers.ReadMetadata(path, session);
+                Assert(metadataAfterRename.Entries.Count == 1, "Rename unexpectedly changed entry count.");
+                Assert(metadataAfterRename.Entries[0].Name == "renamed.bin", "Renamed file metadata was not persisted.");
+                Assert(metadataAfterRename.Revision == 2, "Metadata revision did not advance after rename.");
+
+                var renamedExportPath = Path.Combine(root, "renamed-export.bin");
+                containers.ExportFile(path, session, "renamed.bin", renamedExportPath);
+                var renamedExportBytes = File.ReadAllBytes(renamedExportPath);
+                try
+                {
+                    Assert(importBytes.AsSpan().SequenceEqual(renamedExportBytes),
+                        "Renaming changed or damaged the encrypted file payload.");
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(renamedExportBytes);
+                }
+
+                var oldNameRejected = false;
+                try
+                {
+                    containers.ExportFile(path, session, "inside.bin", Path.Combine(root, "old-name-export.bin"));
+                }
+                catch (FileNotFoundException)
+                {
+                    oldNameRejected = true;
+                }
+
+                Assert(oldNameRejected, "The old filename remained addressable after rename.");
+
+                containers.RenameRootFile(path, session, "renamed.bin", "inside.bin");
+
+                containers.ImportFile(path, session, sourcePath, "delete-me.bin");
+                var sizeBeforeDelete = new FileInfo(path).Length;
+                var metadataBeforeDelete = containers.ReadMetadata(path, session);
+                Assert(metadataBeforeDelete.Entries.Count == 2, "Second encrypted file was not imported.");
+
+                containers.DeleteRootFile(path, session, "delete-me.bin");
+
+                var sizeAfterDelete = new FileInfo(path).Length;
+                var metadataAfterDelete = containers.ReadMetadata(path, session);
+                Assert(metadataAfterDelete.Entries.Count == 1, "Deleted file remained in encrypted metadata.");
+                Assert(metadataAfterDelete.Entries[0].Name == "inside.bin", "Delete removed the wrong file.");
+                Assert(sizeAfterDelete < sizeBeforeDelete, "Delete/compaction did not remove the encrypted content record.");
+
+                var postDeleteExportPath = Path.Combine(root, "post-delete-export.bin");
+                containers.ExportFile(path, session, "inside.bin", postDeleteExportPath);
+                var postDeleteBytes = File.ReadAllBytes(postDeleteExportPath);
+                try
+                {
+                    Assert(importBytes.AsSpan().SequenceEqual(postDeleteBytes),
+                        "Deleting another entry damaged the retained encrypted file.");
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(postDeleteBytes);
+                }
+
+                var sizeBeforeCompact = new FileInfo(path).Length;
+                containers.CompactVault(path, session);
+                var sizeAfterCompact = new FileInfo(path).Length;
+                Assert(sizeAfterCompact <= sizeBeforeCompact, "Compaction unexpectedly increased vault size.");
+
                 TestStoredFileTamper(containers, path, originalPassword, root);
             }
             finally

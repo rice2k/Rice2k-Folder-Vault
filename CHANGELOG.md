@@ -2,61 +2,66 @@
 
 All notable changes to **Rice2k Folder Vault** will be documented here.
 
+## [0.2.1-alpha] - 2026-10-05
+
+### Added
+
+- Persistent encrypted `FILE` records inside `.rvault` containers.
+- Atomic-style encrypted container rewrite workflow for imports.
+- Encrypted metadata updates for imported files.
+- Root-level duplicate filename protection.
+- Encrypted record scanning by content-record ID.
+- File export/decryption from persistent vault records.
+- Alpha **Vault Contents** window with:
+  - Add Files
+  - Export Selected
+  - Refresh
+  - encrypted metadata listing
+- Main-window and system-tray access to Vault Contents while unlocked.
+- End-to-end self-tests for persistent import/export.
+- Stored file-record tamper test.
+- Verification that encrypted file payload remains readable after password re-wrap.
+
+### Changed
+
+- Main UI now reports encrypted file storage as active.
+- Documentation now distinguishes implemented encrypted storage from the still-pending Explorer filesystem mount.
+- Version advanced to `0.2.1-alpha`.
+
+### Security
+
+- Imports do not create a plaintext staging copy; source data is streamed directly into an encrypted temporary FILE record.
+- Container rewrite temporary files contain encrypted data.
+- Exports intentionally create plaintext output and use a temporary partial output before finalizing.
+- A vault may unlock successfully when an unused FILE record is corrupted because each FILE record is authenticated when accessed; corrupted referenced content is rejected during export.
+- Persistent storage is still alpha: crash-safe journaling/transactions, compaction, recovery-key support, filesystem mounting, and independent review remain pending.
+
 ## [0.2.0-alpha] - 2026-10-05
 
 ### Added
 
 - Portable per-vault `.rvault` container creation.
 - Versioned `R2FVLT01` vault header.
-- Random 256-bit Vault Master Key per vault.
-- Argon2id password-to-KEK derivation using a per-vault 256-bit salt.
-- AES-256-GCM authenticated wrapping of the VMK.
-- Per-vault local registry storing display name, container path, and non-secret vault ID.
-- Encrypted/authenticated META segment for protected directory/file metadata.
-- HKDF-SHA256 domain-separated metadata key derivation.
-- Chunked streaming file-content encryption service using AES-256-GCM.
-- HKDF-SHA256 per-content-record key derivation.
-- 1 MiB default encrypted file chunks with per-chunk nonce/tag and ordering/length binding.
-- Password change by re-wrapping the existing VMK.
-- Dependency-light crypto self-test project.
-- Tests for wrong passwords, header tampering, metadata tampering, file-content tampering, password re-wrap, empty files, and multi-chunk round trips.
-- Formal `.rvault` format documentation.
+- Random 256-bit Vault Master Key.
+- Argon2id password-to-KEK derivation.
+- AES-256-GCM authenticated VMK wrapping.
+- Encrypted/authenticated META segment.
+- HKDF-SHA256 metadata and content subkeys.
+- Chunked AES-256-GCM file-content service.
+- Password change by re-wrapping the VMK.
+- Cryptographic self-test foundation.
+- Formal vault-format documentation.
 
 ### Changed
 
-- Removed the temporary Local AppData password-verifier prototype.
-- Unlock now authenticates the selected `.rvault` header and encrypted metadata.
-- The active VMK is owned by the unlocked vault session and disposed/cleared on lock.
-- First-run flow now creates an actual `.rvault` container.
-- Main application UI now reports the v0.2 vault-engine state.
-
-### Security
-
-- Protected metadata is no longer represented as plaintext outside the encrypted META segment.
-- Security-relevant header fields are authenticated as AES-GCM associated data.
-- File chunks are bound to vault ID, content-record ID, index, chunk length, and total plaintext length.
-- Alpha status remains: persistent FILE-record integration, Explorer mounting, recovery slots, crash-hardening, and independent security review are still pending.
+- Replaced the temporary Local AppData password verifier with per-vault credentials stored in each vault header.
+- Unlock now authenticates the vault header and encrypted metadata.
+- The active VMK is session-owned and cleared on lock.
 
 ## [0.1.1-alpha] - 2026-10-05
 
-### Added
-
-- First-run password-verification prototype using Argon2id.
-- Minimum 12-character password requirement.
-
-### Changed
-
-- Replaced preview unlock behavior with actual password verification.
-- This prototype credential model was superseded by the per-vault v0.2 design.
+- Added the temporary Argon2id password-verification prototype later superseded by the per-vault v0.2 design.
 
 ## [0.1.0-alpha] - 2026-10-05
 
-### Added
-
-- Initial repository structure.
-- C# / .NET 8 / WPF application foundation.
-- Locked/unlocked vault-state prototype.
-- Unlock prompt and main control panel.
-- Settings and auto-lock preference model.
-- Windows system-tray foundation.
-- Product, security, UI, architecture, and roadmap documentation.
+- Initial C#/.NET 8/WPF application and repository foundation.

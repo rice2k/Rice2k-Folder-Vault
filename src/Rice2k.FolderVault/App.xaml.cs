@@ -20,6 +20,8 @@ public partial class App : Application
     private Forms.ToolStripMenuItem? _openOrUnlockItem;
     private Forms.ToolStripMenuItem? _lockItem;
     private Forms.ToolStripMenuItem? _vaultManagerItem;
+    private Forms.ToolStripMenuItem? _mountDriveItem;
+    private Forms.ToolStripMenuItem? _unmountDriveItem;
     private Forms.ToolStripMenuItem? _changePasswordItem;
     private MainWindow? _mainWindow;
 
@@ -42,7 +44,8 @@ public partial class App : Application
         _mainWindow = new MainWindow();
         ConfigureTrayIcon();
 
-        VaultState.StateChanged += (_, _) => RefreshTrayState();
+        VaultState.StateChanged += (_, _) => Dispatcher.Invoke(RefreshTrayState);
+        VaultMounts.StateChanged += (_, _) => Dispatcher.Invoke(RefreshTrayState);
 
         _mainWindow.Show();
         RefreshTrayState();
@@ -64,6 +67,16 @@ public partial class App : Application
             EnsureMainWindowVisible();
             _mainWindow?.OpenVaultManager();
         };
+
+        _mountDriveItem = new Forms.ToolStripMenuItem("Mount Explorer Drive");
+        _mountDriveItem.Click += (_, _) =>
+        {
+            EnsureMainWindowVisible();
+            _mainWindow?.MountExplorerDrive();
+        };
+
+        _unmountDriveItem = new Forms.ToolStripMenuItem("Unmount Explorer Drive");
+        _unmountDriveItem.Click += (_, _) => VaultMounts.Unmount();
 
         _changePasswordItem = new Forms.ToolStripMenuItem("Change Password...");
         _changePasswordItem.Click += (_, _) =>
@@ -89,6 +102,8 @@ public partial class App : Application
         menu.Items.Add(_openOrUnlockItem);
         menu.Items.Add(_lockItem);
         menu.Items.Add(_vaultManagerItem);
+        menu.Items.Add(_mountDriveItem);
+        menu.Items.Add(_unmountDriveItem);
         menu.Items.Add(_changePasswordItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(settingsItem);
@@ -147,11 +162,21 @@ public partial class App : Application
         if (_vaultManagerItem is not null)
             _vaultManagerItem.Enabled = VaultState.IsUnlocked;
 
+        var mounted = VaultMounts.IsMounted;
+
+        if (_mountDriveItem is not null)
+            _mountDriveItem.Enabled = VaultState.IsUnlocked && !mounted;
+
+        if (_unmountDriveItem is not null)
+            _unmountDriveItem.Enabled = mounted;
+
         if (_changePasswordItem is not null)
             _changePasswordItem.Enabled = VaultState.IsUnlocked;
 
         _trayIcon.Text = VaultState.IsUnlocked
-            ? "Rice2k Folder Vault — Unlocked"
+            ? mounted
+                ? "Rice2k Folder Vault — Mounted read-only"
+                : "Rice2k Folder Vault — Unlocked"
             : "Rice2k Folder Vault — Locked";
     }
 

@@ -19,6 +19,7 @@ public partial class App : Application
     private Forms.ToolStripMenuItem? _openOrUnlockItem;
     private Forms.ToolStripMenuItem? _lockItem;
     private Forms.ToolStripMenuItem? _vaultManagerItem;
+    private Forms.ToolStripMenuItem? _changePasswordItem;
     private MainWindow? _mainWindow;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -61,6 +62,13 @@ public partial class App : Application
             _mainWindow?.OpenVaultManager();
         };
 
+        _changePasswordItem = new Forms.ToolStripMenuItem("Change Password...");
+        _changePasswordItem.Click += (_, _) =>
+        {
+            EnsureMainWindowVisible();
+            _mainWindow?.OpenChangePassword();
+        };
+
         var settingsItem = new Forms.ToolStripMenuItem("Settings...");
         settingsItem.Click += (_, _) =>
         {
@@ -78,6 +86,7 @@ public partial class App : Application
         menu.Items.Add(_openOrUnlockItem);
         menu.Items.Add(_lockItem);
         menu.Items.Add(_vaultManagerItem);
+        menu.Items.Add(_changePasswordItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(settingsItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -134,6 +143,9 @@ public partial class App : Application
 
         if (_vaultManagerItem is not null)
             _vaultManagerItem.Enabled = VaultState.IsUnlocked;
+
+        if (_changePasswordItem is not null)
+            _changePasswordItem.Enabled = VaultState.IsUnlocked;
 
         _trayIcon.Text = VaultState.IsUnlocked
             ? "Rice2k Folder Vault — Unlocked"

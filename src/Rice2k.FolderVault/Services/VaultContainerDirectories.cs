@@ -419,7 +419,7 @@ public sealed partial class VaultContainerService
             throw new ArgumentNullException(nameof(metadata));
 
         if (string.Equals(directoryId, metadata.RootDirectoryId, StringComparison.Ordinal))
-            return "\";
+            return "\\";
 
         var names = new Stack<string>();
         var visited = new HashSet<string>(StringComparer.Ordinal);
@@ -439,7 +439,7 @@ public sealed partial class VaultContainerService
             currentId = directory.ParentDirectoryId;
         }
 
-        return "\" + string.Join("\", names);
+        return "\\" + string.Join("\\", names);
     }
 
     private void RewriteMetadataAndCopyAllRecords(

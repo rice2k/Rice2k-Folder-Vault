@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Rice2k.FolderVault.Models;
 using Rice2k.FolderVault.Views;
 
 namespace Rice2k.FolderVault;
@@ -33,10 +34,22 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new UnlockWindow { Owner = this };
+        var vault = App.VaultRegistry.PrimaryVault;
+        if (vault is null)
+        {
+            MessageBox.Show(this, "No vault is registered.", "Rice2k Folder Vault",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = new UnlockWindow(vault) { Owner = this };
 
         if (dialog.ShowDialog() == true)
-            App.VaultState.UnlockPreview();
+        {
+            var sessionKey = dialog.TakeSessionKey();
+            if (sessionKey is not null)
+                App.VaultState.Unlock(sessionKey, vault.VaultIdBase64);
+        }
     }
 
     public void OpenSettings()
@@ -63,7 +76,7 @@ public partial class MainWindow : Window
 
         MessageBox.Show(
             this,
-            "Your password has been verified, but the encrypted virtual-drive engine is not connected yet. No protected file storage is exposed in this alpha.",
+            "The vault master key is unlocked in memory, but encrypted file payload storage and the virtual drive are not connected yet.",
             "Rice2k Folder Vault",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
@@ -73,17 +86,19 @@ public partial class MainWindow : Window
 
     private void RefreshState()
     {
+        var vault = App.VaultRegistry.PrimaryVault;
         var unlocked = App.VaultState.IsUnlocked;
 
+        VaultNameText.Text = vault?.DisplayName ?? "No Vault";
         StatusText.Text = unlocked ? "Unlocked" : "Locked";
         StatusBadge.Background = new SolidColorBrush(
             (Color)ColorConverter.ConvertFromString(unlocked ? "#1E6B3A" : "#5A2530"));
 
         StatusDetailText.Text = unlocked
-            ? "Password verified. Encrypted storage/mount engine is not yet enabled."
-            : "Vault session is locked.";
+            ? "Vault master key is unlocked in memory. File payload is not mounted yet."
+            : "Vault master key is not available in memory.";
 
-        UnlockButton.IsEnabled = !unlocked;
+        UnlockButton.IsEnabled = !unlocked && vault is not null;
         OpenVaultButton.IsEnabled = unlocked;
         LockButton.IsEnabled = unlocked;
 

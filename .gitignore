@@ -1,0 +1,28 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+
+# JetBrains
+.idea/
+*.sln.iml
+
+# Build artifacts
+artifacts/
+publish/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local vault test material
+*.rvault
+*.rvault.tmp
+test-vaults/

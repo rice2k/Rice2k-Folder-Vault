@@ -27,7 +27,7 @@
 - [x] Export/decrypt stored FILE records by content-record ID
 - [x] Alpha encrypted Vault Contents manager
 - [x] Password change engine by VMK re-wrap
-- [ ] Password change UI
+- [x] Password change UI
 - [ ] Optional recovery-key wrapping slot
 - [x] Header/metadata/content tamper checks
 - [x] Persistent import/export self-tests

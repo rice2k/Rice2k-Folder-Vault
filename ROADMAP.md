@@ -31,8 +31,8 @@
 - [ ] Optional recovery-key wrapping slot
 - [x] Header/metadata/content tamper checks
 - [x] Persistent import/export self-tests
-- [ ] File rename
-- [ ] File deletion and record compaction
+- [x] File rename
+- [x] File deletion and record compaction
 - [ ] Nested directories
 - [ ] Crash-safe transactional commit/journal design
 - [ ] Verify CI execution once GitHub-hosted runner issue is resolved

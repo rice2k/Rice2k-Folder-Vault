@@ -60,6 +60,82 @@ internal static class Program
             var metadata = containers.ReadMetadata(path, session);
             Assert(metadata.MetadataVersion == 1, "Unexpected metadata version.");
             Assert(metadata.Entries.Count == 0, "A new vault should have empty metadata.");
+
+            var contentService = new VaultContentService();
+            var originalBytes = RandomNumberGenerator.GetBytes((2 * 1024 * 1024) + 333_333);
+            using var plaintextSource = new MemoryStream(originalBytes, writable: false);
+            using var encryptedRecord = new MemoryStream();
+
+            var contentInfo = contentService.WriteEncryptedContent(
+                encryptedRecord,
+                header,
+                session,
+                plaintextSource,
+                originalBytes.LongLength);
+
+            Assert(contentInfo.ChunkCount == 3, "Unexpected content chunk count.");
+
+            encryptedRecord.Position = 0;
+            using var decryptedRecord = new MemoryStream();
+            var readInfo = contentService.ReadEncryptedContent(
+                encryptedRecord,
+                header,
+                session,
+                decryptedRecord,
+                contentInfo.RecordIdBase64);
+
+            Assert(readInfo.PlaintextLength == originalBytes.LongLength,
+                "Round-trip content length changed.");
+
+            var roundTripBytes = decryptedRecord.ToArray();
+            Assert(originalBytes.AsSpan().SequenceEqual(roundTripBytes),
+                "Chunked encrypted content did not round-trip exactly.");
+
+            var tamperedRecordBytes = encryptedRecord.ToArray();
+            tamperedRecordBytes[^1] ^= 0x01;
+            using var tamperedRecord = new MemoryStream(tamperedRecordBytes, writable: false);
+            using var tamperedOutput = new MemoryStream();
+
+            var contentTamperRejected = false;
+            try
+            {
+                contentService.ReadEncryptedContent(
+                    tamperedRecord,
+                    header,
+                    session,
+                    tamperedOutput,
+                    contentInfo.RecordIdBase64);
+            }
+            catch (CryptographicException)
+            {
+                contentTamperRejected = true;
+            }
+
+            Assert(contentTamperRejected, "Tampered encrypted file content was not rejected.");
+
+            using var emptySource = new MemoryStream(Array.Empty<byte>(), writable: false);
+            using var emptyEncrypted = new MemoryStream();
+            var emptyInfo = contentService.WriteEncryptedContent(
+                emptyEncrypted,
+                header,
+                session,
+                emptySource,
+                0);
+
+            emptyEncrypted.Position = 0;
+            using var emptyOutput = new MemoryStream();
+            contentService.ReadEncryptedContent(
+                emptyEncrypted,
+                header,
+                session,
+                emptyOutput,
+                emptyInfo.RecordIdBase64);
+
+            Assert(emptyOutput.Length == 0, "Empty encrypted file did not round-trip as empty.");
+
+            CryptographicOperations.ZeroMemory(originalBytes);
+            CryptographicOperations.ZeroMemory(roundTripBytes);
+            CryptographicOperations.ZeroMemory(tamperedRecordBytes);
         }
 
         Assert(!containers.TryUnlock(path, "definitely the wrong password", out var wrongSession),

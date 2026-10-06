@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Rice2k.FolderVault.Models;
+using System.Security.Cryptography;
 using Rice2k.FolderVault.Services;
 
 internal static class Program
@@ -54,21 +54,52 @@ internal static class Program
 
         Assert(containers.TryUnlock(path, originalPassword, out var session) && session is not null,
             "Correct password did not unlock the vault.");
-        session!.Dispose();
+
+        using (session!)
+        {
+            var metadata = containers.ReadMetadata(path, session);
+            Assert(metadata.MetadataVersion == 1, "Unexpected metadata version.");
+            Assert(metadata.Entries.Count == 0, "A new vault should have empty metadata.");
+        }
 
         Assert(!containers.TryUnlock(path, "definitely the wrong password", out var wrongSession),
             "Wrong password unexpectedly unlocked the vault.");
         wrongSession?.Dispose();
 
-        var tampered = containers.ReadHeader(path);
-        var tag = Convert.FromBase64String(tampered.WrappedMasterKeyTagBase64);
+        var tamperedHeader = containers.ReadHeader(path);
+        var tag = Convert.FromBase64String(tamperedHeader.WrappedMasterKeyTagBase64);
         tag[0] ^= 0x01;
-        tampered.WrappedMasterKeyTagBase64 = Convert.ToBase64String(tag);
+        tamperedHeader.WrappedMasterKeyTagBase64 = Convert.ToBase64String(tag);
         Array.Clear(tag, 0, tag.Length);
 
-        Assert(!crypto.TryUnwrapMasterKey(tampered, originalPassword, out var tamperedSession),
-            "Tampered authentication tag unexpectedly unlocked.");
-        tamperedSession?.Dispose();
+        Assert(!crypto.TryUnwrapMasterKey(tamperedHeader, originalPassword, out var tamperedHeaderSession),
+            "Tampered master-key authentication tag unexpectedly unlocked.");
+        tamperedHeaderSession?.Dispose();
+
+        var tamperedPayloadPath = Path.Combine(root, "tampered-payload.rvault");
+        File.Copy(path, tamperedPayloadPath);
+        using (var tamperedFile = new FileStream(tamperedPayloadPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            tamperedFile.Position = tamperedFile.Length - 1;
+            var value = tamperedFile.ReadByte();
+            Assert(value >= 0, "Could not read payload byte for tamper test.");
+            tamperedFile.Position = tamperedFile.Length - 1;
+            tamperedFile.WriteByte((byte)(value ^ 0x01));
+            tamperedFile.Flush(true);
+        }
+
+        var payloadTamperRejected = false;
+        try
+        {
+            containers.TryUnlock(tamperedPayloadPath, originalPassword, out var tamperedPayloadSession);
+            tamperedPayloadSession?.Dispose();
+        }
+        catch (CryptographicException)
+        {
+            payloadTamperRejected = true;
+        }
+
+        Assert(payloadTamperRejected, "Tampered encrypted metadata was not rejected.");
 
         containers.ChangePassword(path, originalPassword, changedPassword);
 
@@ -78,7 +109,13 @@ internal static class Program
 
         Assert(containers.TryUnlock(path, changedPassword, out var changedSession) && changedSession is not null,
             "New password did not unlock after password change.");
-        changedSession!.Dispose();
+
+        using (changedSession!)
+        {
+            var metadataAfterRewrap = containers.ReadMetadata(path, changedSession);
+            Assert(metadataAfterRewrap.MetadataVersion == 1,
+                "Metadata could not be decrypted after master-key rewrap.");
+        }
 
         var duplicateRejected = false;
         try

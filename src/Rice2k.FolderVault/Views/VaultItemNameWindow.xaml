@@ -1,0 +1,41 @@
+<Window x:Class="Rice2k.FolderVault.Views.VaultItemNameWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Vault Item — Rice2k Folder Vault"
+        Width="450"
+        Height="255"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock x:Name="HeadingText" Text="Vault item" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock x:Name="DescriptionText"
+                       Text="Enter a name."
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,18,0,0">
+            <TextBlock Text="Name" FontWeight="SemiBold" Margin="0,0,0,7"/>
+            <TextBox x:Name="NameInput" Height="38" Padding="10,7"/>
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Click="CancelButton_Click"/>
+            <Button x:Name="ConfirmButton" Grid.Column="2" Content="Save" Style="{StaticResource PrimaryButtonStyle}" Click="ConfirmButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>

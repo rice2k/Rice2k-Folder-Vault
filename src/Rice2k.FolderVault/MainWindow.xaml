@@ -32,6 +32,7 @@
                     <Button Content="Home" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,10"/>
                     <Button Content="Settings" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,10" Click="SettingsButton_Click"/>
                     <Button x:Name="VaultManagerButton" Content="Vault Contents" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="False" Margin="0,0,0,10" Click="VaultManagerButton_Click"/>
+                    <Button x:Name="ChangePasswordButton" Content="Change Password" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="False" Margin="0,0,0,10" Click="ChangePasswordButton_Click"/>
                 </StackPanel>
 
                 <StackPanel Grid.Row="3">

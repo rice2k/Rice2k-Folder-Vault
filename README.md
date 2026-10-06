@@ -44,6 +44,7 @@ The future v0.3 filesystem layer will replace the temporary Vault Contents workf
 - encrypted metadata updates when files are imported
 - file export/decryption by encrypted content-record ID
 - password changes by re-wrapping the VMK rather than re-encrypting stored files
+- Change Password UI in the main window and system tray
 - in-memory VMK disposal/zeroing on lock
 - alpha Vault Contents import/export interface
 - tamper and round-trip self-tests

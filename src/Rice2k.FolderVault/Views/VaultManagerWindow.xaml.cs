@@ -70,12 +70,8 @@ public partial class VaultManagerWindow : Window
         if (!EnsureUnlocked())
             return;
 
-        if (EntryList.SelectedItem is not VaultEntryRow selected)
-        {
-            MessageBox.Show(this, "Select a file to export.", "Rice2k Folder Vault",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+        if (!TryGetSelected(out var selected))
             return;
-        }
 
         var dialog = new SaveFileDialog
         {
@@ -101,11 +97,95 @@ public partial class VaultManagerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this,
-                "The file could not be exported.\n\n" + ex.Message,
+            ShowOperationError("The file could not be exported.", ex);
+        }
+    }
+
+    private void RenameButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureUnlocked() || !TryGetSelected(out var selected))
+            return;
+
+        var dialog = new RenameEntryWindow(selected.Name) { Owner = this };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            App.VaultContainers.RenameRootFile(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey(),
+                selected.Name,
+                dialog.NewName);
+
+            RefreshEntries();
+        }
+        catch (Exception ex)
+        {
+            ShowOperationError("The file could not be renamed.", ex);
+        }
+    }
+
+    private void DeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureUnlocked() || !TryGetSelected(out var selected))
+            return;
+
+        var result = MessageBox.Show(
+            this,
+            "Delete '" + selected.Name + "' from the vault?\n\nThe encrypted content record will be removed from the rewritten container. This cannot be undone unless you have a separate backup.",
+            "Delete Protected File",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            App.VaultContainers.DeleteRootFile(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey(),
+                selected.Name);
+
+            RefreshEntries();
+        }
+        catch (Exception ex)
+        {
+            ShowOperationError("The file could not be deleted.", ex);
+        }
+    }
+
+    private void CompactButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureUnlocked())
+            return;
+
+        try
+        {
+            var before = new FileInfo(_vault.ContainerPath).Length;
+
+            App.VaultContainers.CompactVault(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey());
+
+            var after = new FileInfo(_vault.ContainerPath).Length;
+            var reclaimed = Math.Max(0, before - after);
+
+            MessageBox.Show(
+                this,
+                "Vault compaction completed.\n\nReclaimed: " + FormatSize(reclaimed),
                 "Rice2k Folder Vault",
                 MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                MessageBoxImage.Information);
+
+            RefreshEntries();
+        }
+        catch (Exception ex)
+        {
+            ShowOperationError("The vault could not be compacted.", ex);
         }
     }
 
@@ -138,12 +218,22 @@ public partial class VaultManagerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this,
-                "Vault contents could not be read.\n\n" + ex.Message,
-                "Rice2k Folder Vault",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            ShowOperationError("Vault contents could not be read.", ex);
         }
+    }
+
+    private bool TryGetSelected(out VaultEntryRow selected)
+    {
+        if (EntryList.SelectedItem is VaultEntryRow row)
+        {
+            selected = row;
+            return true;
+        }
+
+        selected = null!;
+        MessageBox.Show(this, "Select a file first.", "Rice2k Folder Vault",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+        return false;
     }
 
     private bool EnsureUnlocked()
@@ -157,6 +247,15 @@ public partial class VaultManagerWindow : Window
             MessageBoxButton.OK,
             MessageBoxImage.Information);
         return false;
+    }
+
+    private void ShowOperationError(string message, Exception ex)
+    {
+        MessageBox.Show(this,
+            message + "\n\n" + ex.Message,
+            "Rice2k Folder Vault",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
     }
 
     private static string FormatSize(long bytes)

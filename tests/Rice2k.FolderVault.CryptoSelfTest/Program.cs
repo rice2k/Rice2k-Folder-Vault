@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using DokanNet;
+using Rice2k.FolderVault.Models;
 using Rice2k.FolderVault.Services;
 
 internal static class Program
@@ -220,6 +222,80 @@ internal static class Program
                 {
                     CryptographicOperations.ZeroMemory(nestedExportBytes);
                 }
+
+                var persistentRangeBuffer = new byte[8192];
+                var persistentRangeOffset = (1024 * 1024) - 1234;
+                var persistentRangeRead = containers.ReadFileRangeByEntryId(
+                    path,
+                    session,
+                    nestedImported.EntryId,
+                    persistentRangeOffset,
+                    persistentRangeBuffer);
+
+                Assert(persistentRangeRead == persistentRangeBuffer.Length,
+                    "Persistent encrypted range read returned an unexpected byte count.");
+                Assert(importBytes.AsSpan(persistentRangeOffset, persistentRangeBuffer.Length)
+                        .SequenceEqual(persistentRangeBuffer),
+                    "Persistent encrypted range read did not match the original plaintext.");
+
+                var registration = new VaultRegistration
+                {
+                    DisplayName = "Self-Test Vault",
+                    ContainerPath = path,
+                    VaultIdBase64 = header.VaultIdBase64
+                };
+
+                var readOnlyFileSystem = new VaultReadOnlyFileSystem(
+                    registration,
+                    containers,
+                    session);
+
+                var mockInfo = new MockDokanFileInfo();
+                var fileInfoStatus = readOnlyFileSystem.GetFileInformation(
+                    @"\Documents\Private\inside.bin",
+                    out var mountedFileInfo,
+                    mockInfo);
+
+                Assert(fileInfoStatus == DokanResult.Success,
+                    "Read-only filesystem could not resolve a nested encrypted file.");
+                Assert(mountedFileInfo.Length == importBytes.LongLength,
+                    "Read-only filesystem reported the wrong file length.");
+
+                var mountedReadBuffer = new byte[4096];
+                var mountedReadStatus = readOnlyFileSystem.ReadFile(
+                    @"\Documents\Private\inside.bin",
+                    mountedReadBuffer,
+                    out var mountedBytesRead,
+                    persistentRangeOffset,
+                    mockInfo);
+
+                Assert(mountedReadStatus == DokanResult.Success,
+                    "Read-only filesystem rejected a valid file read.");
+                Assert(mountedBytesRead == mountedReadBuffer.Length,
+                    "Read-only filesystem returned an unexpected byte count.");
+                Assert(importBytes.AsSpan(persistentRangeOffset, mountedReadBuffer.Length)
+                        .SequenceEqual(mountedReadBuffer),
+                    "Read-only filesystem range read did not match original plaintext.");
+
+                var writeStatus = readOnlyFileSystem.WriteFile(
+                    @"\Documents\Private\inside.bin",
+                    new byte[] { 1, 2, 3 },
+                    out var bytesWritten,
+                    0,
+                    mockInfo);
+
+                Assert(writeStatus == DokanResult.AccessDenied && bytesWritten == 0,
+                    "Read-only filesystem unexpectedly accepted a write.");
+
+                var directoryStatus = readOnlyFileSystem.FindFiles(
+                    @"\Documents\Private",
+                    out var mountedEntries,
+                    mockInfo);
+
+                Assert(directoryStatus == DokanResult.Success,
+                    "Read-only filesystem could not enumerate a nested encrypted folder.");
+                Assert(mountedEntries.Count == 1 && mountedEntries[0].FileName == "inside.bin",
+                    "Read-only filesystem returned unexpected nested directory contents.");
 
                 containers.RenameEntry(
                     path,

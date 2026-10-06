@@ -14,6 +14,7 @@ public sealed class VaultContainerService
     private const int MaximumHeaderSize = 1024 * 1024;
 
     private readonly VaultCryptoService _crypto;
+    private readonly VaultMetadataService _metadata = new();
 
     public VaultContainerService(VaultCryptoService crypto)
     {
@@ -35,11 +36,18 @@ public sealed class VaultContainerService
         var header = _crypto.CreateHeader(password);
         var headerBytes = SerializeHeader(header);
 
-        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        stream.Write(Magic, 0, Magic.Length);
-        WriteHeaderLength(stream, headerBytes.Length);
-        stream.Write(headerBytes, 0, headerBytes.Length);
-        stream.Flush(true);
+        if (!_crypto.TryUnwrapMasterKey(header, password, out var sessionKey) || sessionKey is null)
+            throw new CryptographicException("The newly-created vault master key could not be reopened.");
+
+        using (sessionKey)
+        using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            stream.Write(Magic, 0, Magic.Length);
+            WriteHeaderLength(stream, headerBytes.Length);
+            stream.Write(headerBytes, 0, headerBytes.Length);
+            _metadata.WriteInitialMetadata(stream, header, sessionKey);
+            stream.Flush(true);
+        }
     }
 
     public VaultHeader ReadHeader(string path)
@@ -50,8 +58,34 @@ public sealed class VaultContainerService
 
     public bool TryUnlock(string path, string password, out VaultSessionKey? sessionKey)
     {
-        var header = ReadHeader(path);
-        return _crypto.TryUnwrapMasterKey(header, password, out sessionKey);
+        sessionKey = null;
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var header = ReadHeader(stream, out var payloadOffset);
+
+        if (!_crypto.TryUnwrapMasterKey(header, password, out sessionKey) || sessionKey is null)
+            return false;
+
+        try
+        {
+            stream.Position = payloadOffset;
+            _metadata.ReadMetadata(stream, header, sessionKey);
+            return true;
+        }
+        catch
+        {
+            sessionKey.Dispose();
+            sessionKey = null;
+            throw;
+        }
+    }
+
+    public VaultMetadata ReadMetadata(string path, VaultSessionKey sessionKey)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var header = ReadHeader(stream, out var payloadOffset);
+        stream.Position = payloadOffset;
+        return _metadata.ReadMetadata(stream, header, sessionKey);
     }
 
     public void ChangePassword(string path, string currentPassword, string newPassword)
@@ -61,18 +95,28 @@ public sealed class VaultContainerService
 
         using var input = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.None);
         var oldHeader = ReadHeader(input, out var payloadOffset);
+
+        if (!_crypto.TryUnwrapMasterKey(oldHeader, currentPassword, out var validationSession) || validationSession is null)
+            throw new UnauthorizedAccessException("The current vault password is incorrect.");
+
+        using (validationSession)
+        {
+            input.Position = payloadOffset;
+            _metadata.ReadMetadata(input, oldHeader, validationSession);
+        }
+
         var newHeader = _crypto.RewrapMasterKey(oldHeader, currentPassword, newPassword);
         var newHeaderBytes = SerializeHeader(newHeader);
 
         try
         {
+            input.Position = payloadOffset;
+
             using (var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 output.Write(Magic, 0, Magic.Length);
                 WriteHeaderLength(output, newHeaderBytes.Length);
                 output.Write(newHeaderBytes, 0, newHeaderBytes.Length);
-
-                input.Position = payloadOffset;
                 input.CopyTo(output);
                 output.Flush(true);
             }
@@ -87,7 +131,7 @@ public sealed class VaultContainerService
         }
     }
 
-    private static VaultHeader ReadHeader(Stream stream, out long payloadOffset)
+    internal static VaultHeader ReadHeader(Stream stream, out long payloadOffset)
     {
         Span<byte> magic = stackalloc byte[8];
         ReadExactly(stream, magic);

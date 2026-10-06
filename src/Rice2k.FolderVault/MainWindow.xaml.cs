@@ -50,7 +50,12 @@ public partial class MainWindow : Window
         {
             var sessionKey = dialog.TakeSessionKey();
             if (sessionKey is not null)
+            {
                 App.VaultState.Unlock(sessionKey, vault.VaultIdBase64);
+
+                if (App.Settings.OpenExplorerAfterUnlock)
+                    MountExplorerDrive();
+            }
         }
     }
 

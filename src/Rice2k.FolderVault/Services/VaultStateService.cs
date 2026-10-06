@@ -8,6 +8,7 @@ public sealed class VaultStateService
     private VaultSessionKey? _sessionKey;
 
     public event EventHandler? StateChanged;
+    public event EventHandler? Locking;
 
     public bool IsUnlocked => _sessionKey is not null;
     public DateTimeOffset? UnlockedAt { get; private set; }
@@ -32,6 +33,9 @@ public sealed class VaultStateService
 
     public void Lock(string reason)
     {
+        if (_sessionKey is not null)
+            Locking?.Invoke(this, EventArgs.Empty);
+
         _sessionKey?.Dispose();
         _sessionKey = null;
         ActiveVaultIdBase64 = null;

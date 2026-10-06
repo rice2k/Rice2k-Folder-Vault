@@ -125,7 +125,7 @@ public partial class MainWindow : Window
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = "explorer.exe",
-                        Arguments = """ + mountPoint + """,
+                        Arguments = mountPoint,
                         UseShellExecute = true
                     });
                 }

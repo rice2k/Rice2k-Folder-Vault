@@ -39,13 +39,14 @@
 
 ## v0.3.x — Windows filesystem integration
 
-- [ ] Select and document Windows virtual-filesystem dependency
+- [x] Select and document Windows virtual-filesystem dependency — DokanNet
 - [ ] Integrate a proven Windows virtual-filesystem layer
 - [ ] Mount unlocked vault as a Windows drive
 - [ ] Explorer drag/drop, copy, rename, folders, delete
 - [x] Chunked read/write streaming encryption primitive
 - [x] Connect streaming encryption to persistent vault records
-- [ ] Random-access content IO suitable for filesystem callbacks
+- [ ] Random-access encrypted reads suitable for filesystem callbacks
+- [ ] Random-access transactional writes suitable for filesystem callbacks
 - [ ] Open-file tracking
 - [ ] Safe flush and unmount
 - [ ] Read-only recovery mount

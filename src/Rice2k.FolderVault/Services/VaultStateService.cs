@@ -1,3 +1,5 @@
+using System;
+
 namespace Rice2k.FolderVault.Services;
 
 public sealed class VaultStateService

@@ -2,7 +2,7 @@
 
 **Rice2k Folder Vault** is a Windows encrypted-vault application designed to make protected files feel as easy to use as a normal folder while keeping stored data encrypted whenever the vault is locked.
 
-> Current status: **v0.2.1-alpha — encrypted container import/export working; Explorer drive mounting is next**
+> Current status: **v0.2.2-alpha — encrypted file maintenance working; Explorer drive mounting is next**
 
 ## Project goals
 
@@ -30,7 +30,7 @@
 
 The future v0.3 filesystem layer will replace the temporary Vault Contents workflow with a normal Explorer drive such as `V:\`.
 
-## What v0.2.1-alpha implements
+## What v0.2.2-alpha implements
 
 - portable `.rvault` containers
 - random 256-bit Vault Master Key (VMK)
@@ -47,6 +47,9 @@ The future v0.3 filesystem layer will replace the temporary Vault Contents workf
 - Change Password UI in the main window and system tray
 - in-memory VMK disposal/zeroing on lock
 - alpha Vault Contents import/export interface
+- encrypted metadata rename without decrypting file payloads
+- file deletion with encrypted record compaction
+- manual vault compaction that drops unreferenced encrypted FILE records
 - tamper and round-trip self-tests
 
 ## Important alpha limitations
@@ -55,7 +58,6 @@ The following are **not complete**:
 
 - Explorer virtual-drive mounting
 - directory creation and nested folders in the UI
-- rename/delete/compaction
 - crash-safe transactional storage suitable for production
 - recovery keys
 - full Windows lock/sleep/sign-out hooks

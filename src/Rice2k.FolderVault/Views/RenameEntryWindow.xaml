@@ -1,0 +1,39 @@
+<Window x:Class="Rice2k.FolderVault.Views.RenameEntryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Rename File — Rice2k Folder Vault"
+        Width="430" Height="240"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Rename protected file" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="Only the encrypted metadata name is changed; the encrypted file payload is not decrypted."
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,18,0,0">
+            <TextBlock Text="New name" FontWeight="SemiBold" Margin="0,0,0,7"/>
+            <TextBox x:Name="NameInput" Height="38" Padding="10,7"/>
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Click="CancelButton_Click"/>
+            <Button Grid.Column="2" Content="Rename" Style="{StaticResource PrimaryButtonStyle}" Click="RenameButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>

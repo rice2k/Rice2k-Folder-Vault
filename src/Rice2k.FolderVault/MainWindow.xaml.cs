@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         App.VaultState.StateChanged += (_, _) => Dispatcher.Invoke(RefreshState);
+        App.VaultMounts.StateChanged += (_, _) => Dispatcher.Invoke(RefreshState);
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statusTimer.Tick += (_, _) => UpdateAutoLockCountdown();
@@ -93,6 +95,62 @@ public partial class MainWindow : Window
         RefreshState();
     }
 
+    public void MountExplorerDrive()
+    {
+        if (!App.VaultState.IsUnlocked)
+        {
+            BeginUnlock();
+            if (!App.VaultState.IsUnlocked)
+                return;
+        }
+
+        var vault = App.VaultRegistry.PrimaryVault;
+        if (vault is null)
+            return;
+
+        try
+        {
+            App.VaultMounts.MountReadOnly(
+                vault,
+                App.VaultState.RequireSessionKey(),
+                App.Settings.PreferredMountPoint);
+
+            RefreshState();
+
+            var mountPoint = App.VaultMounts.MountPoint;
+            if (!string.IsNullOrWhiteSpace(mountPoint))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = """ + mountPoint + """,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        this,
+                        "The encrypted drive mounted successfully, but File Explorer could not be opened.\n\n" + ex.Message,
+                        "Rice2k Folder Vault",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                "The read-only Explorer drive could not be mounted.\n\n" + ex.Message,
+                "Rice2k Folder Vault",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
     public void AllowApplicationExit() => _allowApplicationExit = true;
 
     private void UnlockButton_Click(object sender, RoutedEventArgs e) => BeginUnlock();
@@ -101,6 +159,14 @@ public partial class MainWindow : Window
         App.VaultState.Lock("Manual lock");
 
     private void OpenVaultButton_Click(object sender, RoutedEventArgs e) => OpenVaultManager();
+
+    private void MountDriveButton_Click(object sender, RoutedEventArgs e) => MountExplorerDrive();
+
+    private void UnmountDriveButton_Click(object sender, RoutedEventArgs e)
+    {
+        App.VaultMounts.Unmount();
+        RefreshState();
+    }
 
     private void VaultManagerButton_Click(object sender, RoutedEventArgs e) => OpenVaultManager();
 
@@ -118,12 +184,24 @@ public partial class MainWindow : Window
         StatusBadge.Background = new SolidColorBrush(
             (Color)ColorConverter.ConvertFromString(unlocked ? "#1E6B3A" : "#5A2530"));
 
+        var mounted = App.VaultMounts.IsMounted;
+        var mountPoint = App.VaultMounts.MountPoint;
+
         StatusDetailText.Text = unlocked
-            ? "Vault is unlocked. Encrypted file import/export is available; Explorer mounting is not active yet."
+            ? mounted
+                ? "Vault is unlocked and mounted read-only in File Explorer."
+                : "Vault is unlocked. Mount the read-only Explorer drive when you want normal folder browsing."
             : "Vault master key is not available in memory.";
+
+        MountPointText.Text = mountPoint ?? App.Settings.PreferredMountPoint;
+        MountDetailText.Text = mounted
+            ? "Mounted read-only"
+            : "Not mounted";
 
         UnlockButton.IsEnabled = !unlocked && vault is not null;
         OpenVaultButton.IsEnabled = unlocked;
+        MountDriveButton.IsEnabled = unlocked && !mounted;
+        UnmountDriveButton.IsEnabled = mounted;
         VaultManagerButton.IsEnabled = unlocked;
         ChangePasswordButton.IsEnabled = unlocked;
         LockButton.IsEnabled = unlocked;

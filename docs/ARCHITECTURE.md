@@ -28,12 +28,12 @@ Rice2k Folder Vault separates the WPF interface, Windows lifecycle integration, 
 +------------------------+--------------------------+
                          |
 +------------------------v--------------------------+
-|          Future Virtual Filesystem Adapter        |
-| Explorer-visible drive while vault is unlocked   |
+|           Dokan Virtual Filesystem Adapter         |
+| read-only Explorer drive while vault is unlocked |
 +---------------------------------------------------+
 ```
 
-## Current implementation — v0.2.3-alpha
+## Current implementation — v0.3.0-alpha
 
 Implemented:
 
@@ -57,12 +57,16 @@ Implemented:
 - encrypted directory entries and parent/child hierarchy
 - path-aware import/export/rename/delete operations
 - nested Vault Contents navigation
-- storage/crypto self-tests
+- persistent authenticated range reads by entry ID
+- read-only `IDokanOperations` adapter
+- Dokan mount/unmount lifecycle service
+- main-window and tray mount controls
+- pre-lock unmount before VMK disposal
+- storage/crypto/filesystem adapter self-tests
 
 Still pending:
 
 - crash-safe transaction/journal design
-- virtual filesystem mounting
 - complete Windows lifecycle hooks
 - recovery key
 - security review
@@ -93,15 +97,14 @@ A lock:
 
 ## File access today
 
-The temporary **Vault Contents** UI calls encrypted storage services directly for import/export.
+The **Vault Contents** UI still provides explicit encrypted import/export and maintenance operations.
 
-The future filesystem adapter will translate normal Windows file operations to storage-engine operations. It must not weaken the cryptographic boundary.
+The v0.3 read-only Dokan adapter also translates Explorer enumeration/open/read requests to the encrypted storage engine. Mounted reads use authenticated range decryption and do not create plaintext staging files. Mutating filesystem callbacks remain denied until transactional writable storage is implemented.
 
 ## Filesystem adapter requirements
 
-The v0.3 adapter must support:
+The v0.3 adapter currently supports read-only Explorer enumeration and open/read. The full adapter must ultimately support:
 
-- normal Explorer enumeration
 - open/read/write/create/rename/delete
 - random-access IO
 - open-handle tracking

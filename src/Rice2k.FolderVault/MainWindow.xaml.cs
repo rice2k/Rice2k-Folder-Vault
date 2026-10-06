@@ -59,14 +59,7 @@ public partial class MainWindow : Window
         RefreshState();
     }
 
-    public void AllowApplicationExit() => _allowApplicationExit = true;
-
-    private void UnlockButton_Click(object sender, RoutedEventArgs e) => BeginUnlock();
-
-    private void LockButton_Click(object sender, RoutedEventArgs e) =>
-        App.VaultState.Lock("Manual lock");
-
-    private void OpenVaultButton_Click(object sender, RoutedEventArgs e)
+    public void OpenVaultManager()
     {
         if (!App.VaultState.IsUnlocked)
         {
@@ -74,13 +67,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        MessageBox.Show(
-            this,
-            "The vault master key is unlocked in memory, but encrypted file payload storage and the virtual drive are not connected yet.",
-            "Rice2k Folder Vault",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var vault = App.VaultRegistry.PrimaryVault;
+        if (vault is null)
+            return;
+
+        var dialog = new VaultManagerWindow(vault) { Owner = this };
+        dialog.ShowDialog();
+        RefreshState();
     }
+
+    public void AllowApplicationExit() => _allowApplicationExit = true;
+
+    private void UnlockButton_Click(object sender, RoutedEventArgs e) => BeginUnlock();
+
+    private void LockButton_Click(object sender, RoutedEventArgs e) =>
+        App.VaultState.Lock("Manual lock");
+
+    private void OpenVaultButton_Click(object sender, RoutedEventArgs e) => OpenVaultManager();
+
+    private void VaultManagerButton_Click(object sender, RoutedEventArgs e) => OpenVaultManager();
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
@@ -95,11 +100,12 @@ public partial class MainWindow : Window
             (Color)ColorConverter.ConvertFromString(unlocked ? "#1E6B3A" : "#5A2530"));
 
         StatusDetailText.Text = unlocked
-            ? "Vault master key is unlocked in memory. File payload is not mounted yet."
+            ? "Vault is unlocked. Encrypted file import/export is available; Explorer mounting is not active yet."
             : "Vault master key is not available in memory.";
 
         UnlockButton.IsEnabled = !unlocked && vault is not null;
         OpenVaultButton.IsEnabled = unlocked;
+        VaultManagerButton.IsEnabled = unlocked;
         LockButton.IsEnabled = unlocked;
 
         UpdateAutoLockCountdown();

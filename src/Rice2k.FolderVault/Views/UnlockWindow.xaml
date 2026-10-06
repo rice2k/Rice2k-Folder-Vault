@@ -18,8 +18,8 @@
             <Border Width="72" Height="72" Background="#142A49" CornerRadius="18" HorizontalAlignment="Center">
                 <TextBlock Text="LOCK" FontSize="13" FontWeight="Bold" Foreground="#69A7FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <TextBlock Text="Personal Vault is locked" FontWeight="SemiBold" FontSize="22" HorizontalAlignment="Center" Margin="0,18,0,0"/>
-            <TextBlock Text="Enter your password to unlock." Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+            <TextBlock x:Name="VaultNameText" Text="Vault is locked" FontWeight="SemiBold" FontSize="22" HorizontalAlignment="Center" Margin="0,18,0,0"/>
+            <TextBlock Text="Enter your password to unwrap the vault master key." Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Margin="0,25,0,0">
@@ -36,7 +36,7 @@
                       Unchecked="ShowPasswordCheckBox_Changed"/>
 
             <Border Background="#13253C" BorderBrush="#29496F" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,16,0,0">
-                <TextBlock Text="Password verification is active. Encrypted file storage and drive mounting are still under development in this alpha."
+                <TextBlock Text="The .rvault header is authenticated and the master key is encrypted. File payload encryption and Explorer mounting are the next milestone."
                            TextWrapping="Wrap"
                            Foreground="#BFD8F7"
                            FontSize="12"/>

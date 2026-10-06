@@ -35,15 +35,16 @@ The filesystem adapter is isolated behind Rice2k Folder Vault services so the st
 
 ## Phased implementation
 
-### Phase A — Read-only Explorer proof
+### Phase A — Read-only Explorer proof — source implementation complete
 
-- mount `V:\`
-- expose root directory
-- enumerate encrypted metadata as normal filenames
-- report sizes/timestamps
-- support offset-based authenticated reads directly from encrypted FILE chunks
-- deny create/write/delete/rename
-- unmount cleanly on lock
+- [x] mount `V:\` through DokanNet
+- [x] expose root and nested encrypted directories
+- [x] enumerate encrypted metadata as normal filenames
+- [x] report sizes/timestamps
+- [x] support offset-based authenticated reads directly from encrypted FILE chunks
+- [x] deny create/write/delete/rename
+- [x] request unmount before VMK destruction on lock
+- [ ] verify a full mount/read/unmount cycle on a Windows machine with the Dokany 2.x runtime installed
 
 This phase validates Windows filesystem semantics without risking encrypted write corruption.
 
@@ -80,7 +81,7 @@ Explorer requires:
 - file-handle concurrency
 - durable flush semantics
 
-The first storage upgrade therefore adds authenticated **range reads** from encrypted FILE chunks without creating plaintext temporary files.
+The storage engine now exposes authenticated **range reads** from encrypted FILE chunks without creating plaintext temporary files. The current implementation scans encrypted FILE records by content-record ID for each read; record-offset indexing is a future performance optimization.
 
 ## Security boundary
 

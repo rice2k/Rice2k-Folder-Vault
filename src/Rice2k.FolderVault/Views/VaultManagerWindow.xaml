@@ -1,0 +1,78 @@
+<Window x:Class="Rice2k.FolderVault.Views.VaultManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Vault Contents — Rice2k Folder Vault"
+        Width="820"
+        Height="560"
+        MinWidth="700"
+        MinHeight="470"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock x:Name="VaultTitleText" Text="Vault Contents" FontSize="28" FontWeight="SemiBold"/>
+            <TextBlock Text="Alpha encrypted-content manager. Explorer mounting will replace this workflow in v0.3."
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="#13253C"
+                BorderBrush="#29496F"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12"
+                Margin="0,18,0,14">
+            <TextBlock Text="File names shown here are decrypted only while the vault is unlocked. The .rvault file stores the metadata and file content encrypted."
+                       TextWrapping="Wrap"
+                       Foreground="#BFD8F7"
+                       FontSize="12"/>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="1">
+            <ListView x:Name="EntryList"
+                      Background="{StaticResource PanelBrush}"
+                      Foreground="{StaticResource TextPrimaryBrush}"
+                      BorderThickness="0"
+                      SelectionMode="Single">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Name" Width="320" DisplayMemberBinding="{Binding Name}"/>
+                        <GridViewColumn Header="Type" Width="90" DisplayMemberBinding="{Binding Type}"/>
+                        <GridViewColumn Header="Size" Width="110" DisplayMemberBinding="{Binding Size}"/>
+                        <GridViewColumn Header="Modified" Width="190" DisplayMemberBinding="{Binding Modified}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Border>
+
+        <Grid Grid.Row="3" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Content="Add Files..." Style="{StaticResource PrimaryButtonStyle}" Click="AddFilesButton_Click"/>
+            <Button Grid.Column="2" Content="Export Selected..." Style="{StaticResource SecondaryButtonStyle}" Click="ExportButton_Click"/>
+            <Button Grid.Column="4" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshButton_Click"/>
+            <Button Grid.Column="6" Content="Close" Style="{StaticResource SecondaryButtonStyle}" Click="CloseButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>

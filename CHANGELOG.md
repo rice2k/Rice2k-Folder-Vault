@@ -2,6 +2,30 @@
 
 All notable changes to **Rice2k Folder Vault** will be documented here.
 
+## [0.2.2-alpha] - 2026-10-06
+
+### Added
+
+- Root-level encrypted file rename support.
+- Root-level file deletion support.
+- Encrypted record compaction during delete.
+- Manual **Compact Vault** operation for removing unreferenced encrypted FILE records.
+- Dedicated Rename File dialog in the Vault Contents window.
+- Vault Contents controls for Rename, Delete, and Compact Vault.
+- Self-tests covering rename, old-name rejection, deletion, retained-file integrity, and compaction.
+
+### Changed
+
+- Vault Contents now supports basic encrypted file maintenance in addition to import/export.
+- Version advanced to `0.2.2-alpha`.
+
+### Security
+
+- Rename updates authenticated encrypted metadata without decrypting or rewriting the protected file payload.
+- Delete rewrites the container and excludes encrypted FILE records no longer referenced by metadata.
+- Compaction preserves referenced encrypted FILE records byte-for-byte while dropping unreferenced records.
+- These operations still use the alpha replacement-container rewrite model and do not yet provide formal crash/power-loss transaction guarantees.
+
 ## [0.2.1-alpha] - 2026-10-05
 
 ### Added

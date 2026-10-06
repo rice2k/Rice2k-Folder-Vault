@@ -2,6 +2,34 @@
 
 All notable changes to **Rice2k Folder Vault** will be documented here.
 
+## [0.2.3-alpha] - 2026-10-06
+
+### Added
+
+- Encrypted nested directory entries using the existing authenticated META structure.
+- Create-folder support inside any vault directory.
+- Folder navigation with current encrypted path display and Up navigation.
+- Double-click folder navigation in Vault Contents.
+- Import files directly into the currently open encrypted directory.
+- Export files by internal entry ID instead of relying on root-level filename lookup.
+- Generic rename support for both encrypted files and directories.
+- Recursive encrypted directory deletion with FILE-record compaction.
+- Reusable vault-item naming dialog.
+- Self-tests for nested path resolution, nested import/export, same-name files in separate folders, folder rename, safe non-recursive delete rejection, and recursive delete/compaction.
+
+### Changed
+
+- Vault Contents now presents both folders and files.
+- Folder hierarchy remains inside encrypted/authenticated metadata; no plaintext sidecar index is introduced.
+- Version advanced to `0.2.3-alpha`.
+
+### Security
+
+- Directory names and parent/child relationships are protected by the existing encrypted META segment.
+- Same filenames may exist safely in different encrypted directories because operations use internal entry IDs.
+- Recursive directory deletion removes descendant metadata and compacts descendant encrypted FILE records.
+- The vault format remains v1-alpha; this milestone does not require a format-version bump.
+
 ## [0.2.2-alpha] - 2026-10-06
 
 ### Added

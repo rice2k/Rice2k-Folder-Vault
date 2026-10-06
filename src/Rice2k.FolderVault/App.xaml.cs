@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Windows;
 using Rice2k.FolderVault.Models;
 using Rice2k.FolderVault.Services;
+using Rice2k.FolderVault.Views;
 using Forms = System.Windows.Forms;
 
 namespace Rice2k.FolderVault;
@@ -10,6 +11,7 @@ public partial class App : Application
 {
     public static VaultStateService VaultState { get; } = new();
     public static AppSettings Settings { get; } = new();
+    public static VaultCredentialService Credentials { get; } = new();
 
     private Forms.NotifyIcon? _trayIcon;
     private Forms.ToolStripMenuItem? _openOrUnlockItem;
@@ -19,6 +21,16 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (!Credentials.IsConfigured)
+        {
+            var setup = new FirstRunSetupWindow();
+            if (setup.ShowDialog() != true)
+            {
+                Shutdown();
+                return;
+            }
+        }
 
         _mainWindow = new MainWindow();
         ConfigureTrayIcon();
@@ -84,19 +96,13 @@ public partial class App : Application
     private void EnsureMainWindowVisible()
     {
         if (_mainWindow is null)
-        {
             return;
-        }
 
         if (!_mainWindow.IsVisible)
-        {
             _mainWindow.Show();
-        }
 
         if (_mainWindow.WindowState == WindowState.Minimized)
-        {
             _mainWindow.WindowState = WindowState.Normal;
-        }
 
         _mainWindow.Activate();
         _mainWindow.Topmost = true;
@@ -107,19 +113,13 @@ public partial class App : Application
     private void RefreshTrayState()
     {
         if (_trayIcon is null)
-        {
             return;
-        }
 
         if (_openOrUnlockItem is not null)
-        {
             _openOrUnlockItem.Text = VaultState.IsUnlocked ? "Open Vault" : "Unlock Vault";
-        }
 
         if (_lockItem is not null)
-        {
             _lockItem.Enabled = VaultState.IsUnlocked;
-        }
 
         _trayIcon.Text = VaultState.IsUnlocked
             ? "Rice2k Folder Vault — Unlocked"
@@ -128,6 +128,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        VaultState.Lock("Application exit");
+
         if (_trayIcon is not null)
         {
             _trayIcon.Visible = false;

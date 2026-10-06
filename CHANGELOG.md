@@ -21,6 +21,7 @@ All notable changes to **Rice2k Folder Vault** will be documented here.
 - End-to-end self-tests for persistent import/export.
 - Stored file-record tamper test.
 - Verification that encrypted file payload remains readable after password re-wrap.
+- Change Vault Password dialog available from the main window and system tray.
 
 ### Changed
 

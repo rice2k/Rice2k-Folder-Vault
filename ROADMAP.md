@@ -33,7 +33,7 @@
 - [x] Persistent import/export self-tests
 - [x] File rename
 - [x] File deletion and record compaction
-- [ ] Nested directories
+- [x] Nested directories
 - [ ] Crash-safe transactional commit/journal design
 - [ ] Verify CI execution once GitHub-hosted runner issue is resolved
 

@@ -2,6 +2,38 @@
 
 All notable changes to **Rice2k Folder Vault** will be documented here.
 
+## [0.3.0-alpha] - 2026-10-06
+
+### Added
+
+- Read-only DokanNet filesystem adapter implementing `IDokanOperations`.
+- Read-only Windows Explorer mount lifecycle through `DokanInstanceBuilder`.
+- Dokan mount options for write protection, Windows Mount Manager, and current-session mounting.
+- Persistent authenticated random-access file reads by encrypted entry ID.
+- Explorer enumeration of encrypted root and nested directory metadata.
+- File size/timestamp reporting to Windows Explorer.
+- Main-window **Mount Explorer Drive** and **Unmount Drive** controls.
+- System-tray mount/unmount controls.
+- Preferred Explorer drive-letter setting.
+- Optional mount-and-open-Explorer behavior after successful unlock.
+- Pre-lock unmount hook so mounted access is removed before VMK disposal.
+- Filesystem adapter self-tests using DokanNet's mock file-info implementation.
+
+### Changed
+
+- Application version advanced to `0.3.0-alpha`.
+- Automatic Explorer mounting is opt-in during alpha development.
+- Mount-state UI callbacks now use asynchronous dispatcher updates to avoid unmount/UI deadlocks.
+- The Explorer filesystem is deliberately read-only until transactional encrypted writes are designed and tested.
+
+### Security
+
+- Mounted reads decrypt only requested authenticated FILE ranges; no plaintext staging file is created for virtual-drive reads.
+- Create, write, delete, rename, truncate, allocation-size, attribute-change, and security-change filesystem callbacks are denied.
+- Dokan write protection is enabled in addition to application-level write denial.
+- Lock always proceeds to VMK destruction even if best-effort pre-lock unmount cleanup throws.
+- Runtime mount verification on a Windows machine with Dokany 2.x installed is still required before treating this milestone as build/runtime verified.
+
 ## [0.2.3-alpha] - 2026-10-06
 
 ### Added

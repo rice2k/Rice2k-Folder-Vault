@@ -18,16 +18,35 @@ public partial class UnlockWindow : Window
 
         if (string.IsNullOrWhiteSpace(password))
         {
-            MessageBox.Show(
-                this,
-                "Enter a password to continue with the interface preview.",
-                "Password Required",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            MessageBox.Show(this, "Enter your vault password.", "Password Required",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        bool valid;
+        try
+        {
+            valid = App.Credentials.VerifyPassword(password);
+        }
+        catch
+        {
+            ClearPasswordFields();
+            MessageBox.Show(this,
+                "The local vault credential record could not be read. The vault was not unlocked.",
+                "Credential Error", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         ClearPasswordFields();
+
+        if (!valid)
+        {
+            MessageBox.Show(this, "Incorrect password.", "Unlock Failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            PasswordInput.Focus();
+            return;
+        }
+
         DialogResult = true;
     }
 

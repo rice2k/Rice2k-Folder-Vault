@@ -14,6 +14,7 @@ public partial class App : Application
     public static VaultCryptoService VaultCrypto { get; } = new();
     public static VaultContainerService VaultContainers { get; } = new(VaultCrypto);
     public static VaultRegistryService VaultRegistry { get; } = new();
+    public static VaultMountService VaultMounts { get; } = new(VaultContainers);
 
     private Forms.NotifyIcon? _trayIcon;
     private Forms.ToolStripMenuItem? _openOrUnlockItem;
@@ -35,6 +36,8 @@ public partial class App : Application
                 return;
             }
         }
+
+        VaultState.Locking += (_, _) => VaultMounts.Unmount();
 
         _mainWindow = new MainWindow();
         ConfigureTrayIcon();
@@ -155,6 +158,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         VaultState.Lock("Application exit");
+        VaultMounts.Dispose();
 
         if (_trayIcon is not null)
         {

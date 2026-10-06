@@ -1,13 +1,29 @@
+using System;
+using System.IO;
 using System.Windows;
+using Rice2k.FolderVault.Models;
 
 namespace Rice2k.FolderVault.Views;
 
 public partial class UnlockWindow : Window
 {
-    public UnlockWindow()
+    private readonly VaultRegistration _vault;
+    private VaultSessionKey? _sessionKey;
+
+    public UnlockWindow(VaultRegistration vault)
     {
+        _vault = vault ?? throw new ArgumentNullException(nameof(vault));
+
         InitializeComponent();
+        VaultNameText.Text = $"{_vault.DisplayName} is locked";
         Loaded += (_, _) => PasswordInput.Focus();
+    }
+
+    public VaultSessionKey? TakeSessionKey()
+    {
+        var key = _sessionKey;
+        _sessionKey = null;
+        return key;
     }
 
     private void UnlockButton_Click(object sender, RoutedEventArgs e)
@@ -23,35 +39,48 @@ public partial class UnlockWindow : Window
             return;
         }
 
-        bool valid;
         try
         {
-            valid = App.Credentials.VerifyPassword(password);
+            if (!App.VaultContainers.TryUnlock(_vault.ContainerPath, password, out var sessionKey) || sessionKey is null)
+            {
+                ClearPasswordFields();
+                MessageBox.Show(this,
+                    "The password is incorrect, or the vault header failed authentication.",
+                    "Unlock Failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                PasswordInput.Focus();
+                return;
+            }
+
+            _sessionKey = sessionKey;
+            ClearPasswordFields();
+            DialogResult = true;
         }
-        catch
+        catch (FileNotFoundException)
         {
             ClearPasswordFields();
             MessageBox.Show(this,
-                "The local vault credential record could not be read. The vault was not unlocked.",
-                "Credential Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
+                "The registered .rvault file could not be found. The vault was not unlocked.",
+                "Vault File Missing",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
-
-        ClearPasswordFields();
-
-        if (!valid)
+        catch (Exception)
         {
-            MessageBox.Show(this, "Incorrect password.", "Unlock Failed",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            PasswordInput.Focus();
-            return;
+            ClearPasswordFields();
+            MessageBox.Show(this,
+                "The vault could not be opened or its header is invalid. The vault was not unlocked.",
+                "Vault Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
-
-        DialogResult = true;
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
+        _sessionKey?.Dispose();
+        _sessionKey = null;
         ClearPasswordFields();
         DialogResult = false;
     }

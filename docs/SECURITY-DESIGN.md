@@ -1,6 +1,6 @@
 # Security Design
 
-> Status: **pre-production v0.2.3 alpha.** Header, metadata and persistent file records are encrypted/authenticated, but filesystem mounting, transactional crash safety, recovery, and independent review are incomplete.
+> Status: **pre-production v0.3.0 alpha.** Header, metadata and persistent file records are encrypted/authenticated. A read-only Dokan filesystem adapter is implemented, but writable filesystem transactions, runtime mount verification, recovery, and independent review are incomplete.
 
 ## Security objective
 
@@ -81,6 +81,9 @@ The self-test currently exercises:
 - same-name files in separate encrypted directories
 - nested export by internal entry identifier
 - recursive directory deletion with retained root content preserved
+- persistent random-access range reads
+- read-only filesystem nested path lookup and enumeration
+- read-only filesystem write denial
 - password re-wrap with content preserved
 
 ## Memory limitations
@@ -101,7 +104,9 @@ Recovery-key support is not implemented. When added it must be an independent VM
 
 ## Filesystem mount
 
-The future Windows filesystem layer is an access mechanism, not the encryption boundary. A vault must remain encrypted at rest regardless of how it is mounted.
+The Windows filesystem layer is an access mechanism, not the encryption boundary. The v0.3 alpha adapter is mounted with Dokan write protection and explicitly denies create/write/delete/rename callbacks. Explorer reads decrypt requested authenticated ranges while the vault is unlocked.
+
+Locking invokes the mount service before VMK disposal. Pre-lock cleanup is best-effort, but VMK destruction is not skipped if unmount cleanup throws. The vault remains encrypted at rest regardless of mount state.
 
 ## Backups
 

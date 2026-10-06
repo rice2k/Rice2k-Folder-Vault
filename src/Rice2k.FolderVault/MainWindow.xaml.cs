@@ -76,6 +76,23 @@ public partial class MainWindow : Window
         RefreshState();
     }
 
+    public void OpenChangePassword()
+    {
+        if (!App.VaultState.IsUnlocked)
+        {
+            BeginUnlock();
+            return;
+        }
+
+        var vault = App.VaultRegistry.PrimaryVault;
+        if (vault is null)
+            return;
+
+        var dialog = new ChangePasswordWindow(vault) { Owner = this };
+        dialog.ShowDialog();
+        RefreshState();
+    }
+
     public void AllowApplicationExit() => _allowApplicationExit = true;
 
     private void UnlockButton_Click(object sender, RoutedEventArgs e) => BeginUnlock();
@@ -86,6 +103,8 @@ public partial class MainWindow : Window
     private void OpenVaultButton_Click(object sender, RoutedEventArgs e) => OpenVaultManager();
 
     private void VaultManagerButton_Click(object sender, RoutedEventArgs e) => OpenVaultManager();
+
+    private void ChangePasswordButton_Click(object sender, RoutedEventArgs e) => OpenChangePassword();
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
@@ -106,6 +125,7 @@ public partial class MainWindow : Window
         UnlockButton.IsEnabled = !unlocked && vault is not null;
         OpenVaultButton.IsEnabled = unlocked;
         VaultManagerButton.IsEnabled = unlocked;
+        ChangePasswordButton.IsEnabled = unlocked;
         LockButton.IsEnabled = unlocked;
 
         UpdateAutoLockCountdown();

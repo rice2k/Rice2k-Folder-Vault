@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using Microsoft.Win32;
 using Rice2k.FolderVault.Models;
 
@@ -11,6 +12,7 @@ namespace Rice2k.FolderVault.Views;
 public partial class VaultManagerWindow : Window
 {
     private readonly VaultRegistration _vault;
+    private string? _currentDirectoryId;
 
     public VaultManagerWindow(VaultRegistration vault)
     {
@@ -20,14 +22,67 @@ public partial class VaultManagerWindow : Window
         Loaded += (_, _) => RefreshEntries();
     }
 
+    private void NewFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureUnlocked())
+            return;
+
+        try
+        {
+            var metadata = App.VaultContainers.ReadMetadata(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey());
+
+            EnsureCurrentDirectory(metadata);
+
+            var dialog = new VaultItemNameWindow(
+                "New Folder — Rice2k Folder Vault",
+                "Create encrypted folder",
+                "The folder name and hierarchy will be stored inside encrypted vault metadata.",
+                "Create Folder")
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() != true)
+                return;
+
+            App.VaultContainers.CreateDirectory(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey(),
+                _currentDirectoryId!,
+                dialog.ItemName);
+
+            RefreshEntries();
+        }
+        catch (Exception ex)
+        {
+            ShowOperationError("The folder could not be created.", ex);
+        }
+    }
+
     private void AddFilesButton_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureUnlocked())
             return;
 
+        VaultMetadata metadata;
+        try
+        {
+            metadata = App.VaultContainers.ReadMetadata(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey());
+            EnsureCurrentDirectory(metadata);
+        }
+        catch (Exception ex)
+        {
+            ShowOperationError("The current vault folder could not be opened.", ex);
+            return;
+        }
+
         var dialog = new OpenFileDialog
         {
-            Title = "Add files to Rice2k Folder Vault",
+            Title = "Add files to " + App.VaultContainers.GetDirectoryPath(metadata, _currentDirectoryId!),
             Multiselect = true,
             CheckFileExists = true
         };
@@ -41,10 +96,11 @@ public partial class VaultManagerWindow : Window
         {
             try
             {
-                App.VaultContainers.ImportFile(
+                App.VaultContainers.ImportFileToDirectory(
                     _vault.ContainerPath,
                     App.VaultState.RequireSessionKey(),
-                    path);
+                    path,
+                    _currentDirectoryId!);
             }
             catch (Exception ex)
             {
@@ -67,11 +123,19 @@ public partial class VaultManagerWindow : Window
 
     private void ExportButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureUnlocked())
+        if (!EnsureUnlocked() || !TryGetSelected(out var selected))
             return;
 
-        if (!TryGetSelected(out var selected))
+        if (selected.IsDirectory)
+        {
+            MessageBox.Show(
+                this,
+                "Open the folder and select a file to export. Folder export will be added later.",
+                "Rice2k Folder Vault",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             return;
+        }
 
         var dialog = new SaveFileDialog
         {
@@ -85,10 +149,10 @@ public partial class VaultManagerWindow : Window
 
         try
         {
-            App.VaultContainers.ExportFile(
+            App.VaultContainers.ExportFileByEntryId(
                 _vault.ContainerPath,
                 App.VaultState.RequireSessionKey(),
-                selected.Name,
+                selected.EntryId,
                 dialog.FileName,
                 overwrite: true);
 
@@ -106,24 +170,33 @@ public partial class VaultManagerWindow : Window
         if (!EnsureUnlocked() || !TryGetSelected(out var selected))
             return;
 
-        var dialog = new RenameEntryWindow(selected.Name) { Owner = this };
+        var itemType = selected.IsDirectory ? "folder" : "file";
+        var dialog = new VaultItemNameWindow(
+            "Rename — Rice2k Folder Vault",
+            "Rename protected " + itemType,
+            "The new name will be written only to authenticated encrypted metadata.",
+            "Rename",
+            selected.Name)
+        {
+            Owner = this
+        };
 
         if (dialog.ShowDialog() != true)
             return;
 
         try
         {
-            App.VaultContainers.RenameRootFile(
+            App.VaultContainers.RenameEntry(
                 _vault.ContainerPath,
                 App.VaultState.RequireSessionKey(),
-                selected.Name,
-                dialog.NewName);
+                selected.EntryId,
+                dialog.ItemName);
 
             RefreshEntries();
         }
         catch (Exception ex)
         {
-            ShowOperationError("The file could not be renamed.", ex);
+            ShowOperationError("The item could not be renamed.", ex);
         }
     }
 
@@ -132,10 +205,14 @@ public partial class VaultManagerWindow : Window
         if (!EnsureUnlocked() || !TryGetSelected(out var selected))
             return;
 
+        var message = selected.IsDirectory
+            ? "Delete folder '" + selected.Name + "' and everything stored inside it?\n\nAll encrypted file records in that folder tree will be removed from the rewritten container. This cannot be undone without a separate backup."
+            : "Delete '" + selected.Name + "' from the vault?\n\nIts encrypted content record will be removed from the rewritten container. This cannot be undone without a separate backup.";
+
         var result = MessageBox.Show(
             this,
-            "Delete '" + selected.Name + "' from the vault?\n\nThe encrypted content record will be removed from the rewritten container. This cannot be undone unless you have a separate backup.",
-            "Delete Protected File",
+            message,
+            selected.IsDirectory ? "Delete Protected Folder" : "Delete Protected File",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
             MessageBoxResult.No);
@@ -145,16 +222,17 @@ public partial class VaultManagerWindow : Window
 
         try
         {
-            App.VaultContainers.DeleteRootFile(
+            App.VaultContainers.DeleteEntry(
                 _vault.ContainerPath,
                 App.VaultState.RequireSessionKey(),
-                selected.Name);
+                selected.EntryId,
+                recursive: selected.IsDirectory);
 
             RefreshEntries();
         }
         catch (Exception ex)
         {
-            ShowOperationError("The file could not be deleted.", ex);
+            ShowOperationError("The item could not be deleted.", ex);
         }
     }
 
@@ -189,6 +267,44 @@ public partial class VaultManagerWindow : Window
         }
     }
 
+    private void UpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureUnlocked())
+            return;
+
+        try
+        {
+            var metadata = App.VaultContainers.ReadMetadata(
+                _vault.ContainerPath,
+                App.VaultState.RequireSessionKey());
+
+            EnsureCurrentDirectory(metadata);
+
+            if (string.Equals(_currentDirectoryId, metadata.RootDirectoryId, StringComparison.Ordinal))
+                return;
+
+            var currentDirectory = metadata.Entries.FirstOrDefault(e =>
+                string.Equals(e.EntryId, _currentDirectoryId, StringComparison.Ordinal) &&
+                string.Equals(e.EntryType, "directory", StringComparison.Ordinal));
+
+            _currentDirectoryId = currentDirectory?.ParentDirectoryId ?? metadata.RootDirectoryId;
+            RefreshEntries();
+        }
+        catch (Exception ex)
+        {
+            ShowOperationError("The parent folder could not be opened.", ex);
+        }
+    }
+
+    private void EntryList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (EntryList.SelectedItem is not VaultEntryRow selected || !selected.IsDirectory)
+            return;
+
+        _currentDirectoryId = selected.EntryId;
+        RefreshEntries();
+    }
+
     private void RefreshButton_Click(object sender, RoutedEventArgs e) => RefreshEntries();
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
@@ -200,18 +316,27 @@ public partial class VaultManagerWindow : Window
 
         try
         {
-            var metadata = App.VaultContainers.ReadMetadata(
-                _vault.ContainerPath,
-                App.VaultState.RequireSessionKey());
+            var sessionKey = App.VaultState.RequireSessionKey();
+            var metadata = App.VaultContainers.ReadMetadata(_vault.ContainerPath, sessionKey);
+            EnsureCurrentDirectory(metadata);
 
-            EntryList.ItemsSource = metadata.Entries
-                .Where(e => string.Equals(e.EntryType, "file", StringComparison.Ordinal))
-                .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+            CurrentPathText.Text = App.VaultContainers.GetDirectoryPath(metadata, _currentDirectoryId!);
+
+            EntryList.ItemsSource = App.VaultContainers.ListDirectory(
+                    _vault.ContainerPath,
+                    sessionKey,
+                    _currentDirectoryId)
                 .Select(e => new VaultEntryRow
                 {
+                    EntryId = e.EntryId,
                     Name = e.Name,
-                    Type = "File",
-                    Size = FormatSize(e.PlaintextLength),
+                    EntryType = e.EntryType,
+                    Type = string.Equals(e.EntryType, "directory", StringComparison.Ordinal)
+                        ? "Folder"
+                        : "File",
+                    Size = string.Equals(e.EntryType, "directory", StringComparison.Ordinal)
+                        ? string.Empty
+                        : FormatSize(e.PlaintextLength),
                     Modified = FormatModified(e.LastWriteTimeUtcTicks)
                 })
                 .ToList();
@@ -220,6 +345,25 @@ public partial class VaultManagerWindow : Window
         {
             ShowOperationError("Vault contents could not be read.", ex);
         }
+    }
+
+    private void EnsureCurrentDirectory(VaultMetadata metadata)
+    {
+        if (string.IsNullOrWhiteSpace(_currentDirectoryId))
+        {
+            _currentDirectoryId = metadata.RootDirectoryId;
+            return;
+        }
+
+        if (string.Equals(_currentDirectoryId, metadata.RootDirectoryId, StringComparison.Ordinal))
+            return;
+
+        var stillExists = metadata.Entries.Any(e =>
+            string.Equals(e.EntryId, _currentDirectoryId, StringComparison.Ordinal) &&
+            string.Equals(e.EntryType, "directory", StringComparison.Ordinal));
+
+        if (!stillExists)
+            _currentDirectoryId = metadata.RootDirectoryId;
     }
 
     private bool TryGetSelected(out VaultEntryRow selected)
@@ -231,7 +375,7 @@ public partial class VaultManagerWindow : Window
         }
 
         selected = null!;
-        MessageBox.Show(this, "Select a file first.", "Rice2k Folder Vault",
+        MessageBox.Show(this, "Select a file or folder first.", "Rice2k Folder Vault",
             MessageBoxButton.OK, MessageBoxImage.Information);
         return false;
     }
@@ -291,9 +435,14 @@ public partial class VaultManagerWindow : Window
 
     private sealed class VaultEntryRow
     {
+        public string EntryId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
+        public string EntryType { get; init; } = string.Empty;
         public string Type { get; init; } = string.Empty;
         public string Size { get; init; } = string.Empty;
         public string Modified { get; init; } = string.Empty;
+
+        public bool IsDirectory =>
+            string.Equals(EntryType, "directory", StringComparison.Ordinal);
     }
 }

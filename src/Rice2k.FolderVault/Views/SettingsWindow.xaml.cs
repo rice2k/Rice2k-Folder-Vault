@@ -23,6 +23,11 @@ public partial class SettingsWindow : Window
             new TimeoutOption("60 minutes", 60)
         };
 
+        MountPointComboBox.ItemsSource = new[]
+        {
+            "V:", "W:", "X:", "Y:", "Z:"
+        };
+
         LoadSettings();
     }
 
@@ -37,6 +42,7 @@ public partial class SettingsWindow : Window
         LockWhenScreensaverStartsCheckBox.IsChecked = settings.LockWhenScreensaverStarts;
         LockAtShutdownCheckBox.IsChecked = settings.LockAtShutdownOrRestart;
         OpenExplorerAfterUnlockCheckBox.IsChecked = settings.OpenExplorerAfterUnlock;
+        MountPointComboBox.SelectedItem = settings.PreferredMountPoint;
         ShowWarningBeforeLockCheckBox.IsChecked = settings.ShowWarningBeforeLock;
 
         foreach (var item in AutoLockMinutesComboBox.Items)
@@ -52,6 +58,9 @@ public partial class SettingsWindow : Window
         {
             AutoLockMinutesComboBox.SelectedIndex = 2;
         }
+
+        if (MountPointComboBox.SelectedIndex < 0)
+            MountPointComboBox.SelectedItem = "V:";
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -65,6 +74,7 @@ public partial class SettingsWindow : Window
         settings.LockWhenScreensaverStarts = LockWhenScreensaverStartsCheckBox.IsChecked == true;
         settings.LockAtShutdownOrRestart = LockAtShutdownCheckBox.IsChecked == true;
         settings.OpenExplorerAfterUnlock = OpenExplorerAfterUnlockCheckBox.IsChecked == true;
+        settings.PreferredMountPoint = MountPointComboBox.SelectedItem?.ToString() ?? "V:";
         settings.ShowWarningBeforeLock = ShowWarningBeforeLockCheckBox.IsChecked == true;
 
         if (AutoLockMinutesComboBox.SelectedItem is TimeoutOption option)

@@ -31,7 +31,7 @@
 
 The design calls for authenticated encryption and password-based key derivation. A random vault master key will protect vault contents, while a key derived from the user's password will protect the master key. Passwords themselves must never be stored.
 
-See [Security Design](docs/SECURITY-DESIGN.md) for the architecture and threat model.
+See [Security Design](docs/SECURITY-DESIGN.md) for the threat model, [UI Specification](docs/UI-SPEC.md) for the interface rules, and [Architecture](docs/ARCHITECTURE.md) for the planned component boundaries.
 
 ## Repository layout
 
@@ -41,9 +41,12 @@ Rice2k-Folder-Vault/
 │  ├─ Models/
 │  ├─ Services/
 │  └─ Views/
+├─ assets/icons/
 ├─ docs/
+│  ├─ ARCHITECTURE.md
 │  ├─ PRODUCT-SPEC.md
-│  └─ SECURITY-DESIGN.md
+│  ├─ SECURITY-DESIGN.md
+│  └─ UI-SPEC.md
 ├─ .github/workflows/
 ├─ CHANGELOG.md
 ├─ ROADMAP.md

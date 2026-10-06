@@ -11,7 +11,9 @@ public partial class App : Application
 {
     public static VaultStateService VaultState { get; } = new();
     public static AppSettings Settings { get; } = new();
-    public static VaultCredentialService Credentials { get; } = new();
+    public static VaultCryptoService VaultCrypto { get; } = new();
+    public static VaultContainerService VaultContainers { get; } = new(VaultCrypto);
+    public static VaultRegistryService VaultRegistry { get; } = new();
 
     private Forms.NotifyIcon? _trayIcon;
     private Forms.ToolStripMenuItem? _openOrUnlockItem;
@@ -22,10 +24,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        if (!Credentials.IsConfigured)
+        if (VaultRegistry.PrimaryVault is null)
         {
-            var setup = new FirstRunSetupWindow();
-            if (setup.ShowDialog() != true)
+            var createVault = new CreateVaultWindow();
+            if (createVault.ShowDialog() != true)
             {
                 Shutdown();
                 return;
@@ -88,9 +90,7 @@ public partial class App : Application
         EnsureMainWindowVisible();
 
         if (requestUnlock)
-        {
             _mainWindow?.BeginUnlock();
-        }
     }
 
     private void EnsureMainWindowVisible()

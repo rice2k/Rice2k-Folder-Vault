@@ -35,15 +35,15 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="3">
-                    <TextBlock Text="v0.1.0-alpha" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
-                    <TextBlock Text="Foundation build" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                    <TextBlock Text="v0.2.0-alpha" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                    <TextBlock Text="Vault engine foundation" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="34">
-                <TextBlock Text="Personal Vault" FontSize="30" FontWeight="SemiBold"/>
+                <TextBlock x:Name="VaultNameText" Text="Personal Vault" FontSize="30" FontWeight="SemiBold"/>
                 <TextBlock Text="Encrypted storage control center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="14" Margin="0,5,0,24"/>
 
                 <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="24">
@@ -66,7 +66,7 @@
                             </StackPanel>
 
                             <TextBlock x:Name="StatusDetailText"
-                                       Text="Vault contents are not mounted."
+                                       Text="Vault master key is not available in memory."
                                        Foreground="{StaticResource TextSecondaryBrush}"
                                        Margin="0,9,0,0"/>
 
@@ -101,17 +101,17 @@
 
                     <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18">
                         <StackPanel>
-                            <TextBlock Text="Storage Engine" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
-                            <TextBlock Text="Not connected" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0"/>
-                            <TextBlock Text="Scheduled for v0.2–v0.3 milestones" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="Vault Engine" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                            <TextBlock Text="Header protection active" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                            <TextBlock Text="Encrypted file payload is the next v0.2 milestone" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
                 <Border Margin="0,18,0,0" Background="#17233A" BorderBrush="#2C4265" BorderThickness="1" CornerRadius="10" Padding="18">
                     <StackPanel>
-                        <TextBlock Text="Alpha foundation notice" FontWeight="SemiBold"/>
-                        <TextBlock Text="This build demonstrates the Windows interface, tray behavior, settings, and lock-state workflow. It does not yet encrypt or mount user files. Do not place sensitive data in it."
+                        <TextBlock Text="v0.2 alpha security notice" FontWeight="SemiBold"/>
+                        <TextBlock Text="The .rvault header now protects a random master key with Argon2id and AES-256-GCM. User-file payload encryption and Explorer mounting are not implemented yet. Continue using disposable test data only."
                                    TextWrapping="Wrap"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Margin="0,7,0,0"/>

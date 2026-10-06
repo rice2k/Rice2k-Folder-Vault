@@ -1,8 +1,8 @@
 # Rice2k Folder Vault
 
-**Rice2k Folder Vault** is a Windows encrypted-vault application designed to make protected files feel as easy to use as a normal folder while keeping the stored data encrypted whenever the vault is locked.
+**Rice2k Folder Vault** is a Windows encrypted-vault application designed to make protected files feel as easy to use as a normal folder while keeping stored data encrypted whenever the vault is locked.
 
-> Current status: **v0.1.0-alpha — foundation / prototype**
+> Current status: **v0.2.0-alpha — vault-format and cryptography development**
 
 ## Project goals
 
@@ -20,18 +20,41 @@
 ## Intended user experience
 
 1. Start Rice2k Folder Vault.
-2. A vault is locked by default.
+2. Create or select a `.rvault` container.
 3. Unlock it with the vault password.
-4. The vault mounts as a normal Windows drive/folder.
+4. The vault eventually mounts as a normal Windows drive/folder.
 5. Drag, copy, edit, rename, and delete files normally.
 6. Lock manually or allow an auto-lock rule to trigger.
 7. The mounted view disappears and only encrypted vault data remains.
 
-## Security direction
+## What v0.2.0-alpha currently does
 
-The design calls for authenticated encryption and password-based key derivation. A random vault master key will protect vault contents, while a key derived from the user's password will protect the master key. Passwords themselves must never be stored.
+The application now has a real per-vault cryptographic foundation:
 
-See [Security Design](docs/SECURITY-DESIGN.md) for the threat model, [UI Specification](docs/UI-SPEC.md) for the interface rules, and [Architecture](docs/ARCHITECTURE.md) for the planned component boundaries.
+- creates portable `.rvault` containers
+- generates a random 256-bit Vault Master Key
+- derives the password key with Argon2id
+- wraps the master key with AES-256-GCM
+- stores KDF parameters and wrapped-key material in a versioned vault header
+- creates an encrypted/authenticated metadata segment
+- validates metadata before unlock completes
+- keeps the active master key only in the unlocked session and clears it on lock
+- changes passwords by re-wrapping the master key
+- implements chunked streaming AES-GCM file-content encryption as the next storage layer
+- includes tamper/round-trip crypto self-tests
+
+The **Explorer mount and persistent FILE-record integration are not finished yet**. Do not use an alpha build as the only copy of sensitive data.
+
+## Security design
+
+Passwords are never stored in plaintext. A password-derived Key Encryption Key protects a random Vault Master Key; HKDF-derived subkeys protect metadata and file records.
+
+See:
+
+- [Security Design](docs/SECURITY-DESIGN.md)
+- [Vault Format](docs/VAULT-FORMAT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [UI Specification](docs/UI-SPEC.md)
 
 ## Repository layout
 
@@ -41,12 +64,14 @@ Rice2k-Folder-Vault/
 │  ├─ Models/
 │  ├─ Services/
 │  └─ Views/
+├─ tests/Rice2k.FolderVault.CryptoSelfTest/
 ├─ assets/icons/
 ├─ docs/
 │  ├─ ARCHITECTURE.md
 │  ├─ PRODUCT-SPEC.md
 │  ├─ SECURITY-DESIGN.md
-│  └─ UI-SPEC.md
+│  ├─ UI-SPEC.md
+│  └─ VAULT-FORMAT.md
 ├─ .github/workflows/
 ├─ CHANGELOG.md
 ├─ ROADMAP.md
@@ -56,25 +81,14 @@ Rice2k-Folder-Vault/
 
 ## Development stack
 
-The initial desktop shell uses **C# / .NET 8 / WPF** for Windows integration, tray controls, dialogs, timers, and future lifecycle-event handling.
+- C#
+- .NET 8
+- WPF
+- Windows notification-area integration
+- platform AES-GCM and HKDF primitives
+- Konscious.Security.Cryptography.Argon2 for Argon2id password derivation
 
-A proven Windows filesystem layer will be integrated for mounting the encrypted vault. The project will not invent its own filesystem driver or cryptographic algorithm.
-
-## Current milestone — v0.1.0-alpha
-
-This milestone establishes:
-
-- professional Windows application shell
-- locked/unlocked state model
-- unlock prompt prototype
-- main control panel
-- settings model
-- tray-icon foundation
-- auto-lock timer foundation
-- project/version documentation
-- automated Windows build validation
-
-**Important:** v0.1.0-alpha does not yet contain the production encrypted-storage engine or filesystem mount. Do not use it to protect sensitive data.
+The filesystem layer will use a proven Windows user-mode filesystem solution rather than a custom kernel driver.
 
 ## Build
 
@@ -89,11 +103,17 @@ dotnet build src/Rice2k.FolderVault/Rice2k.FolderVault.csproj -c Release
 dotnet run --project src/Rice2k.FolderVault/Rice2k.FolderVault.csproj
 ```
 
+Run the dependency-light crypto self-test:
+
+```powershell
+dotnet run --project tests/Rice2k.FolderVault.CryptoSelfTest/Rice2k.FolderVault.CryptoSelfTest.csproj -c Release
+```
+
 ## Versioning
 
-Rice2k Folder Vault follows semantic versioning.
+Rice2k Folder Vault follows semantic versioning for the application. The vault-format version is tracked separately.
 
-- **MAJOR** — incompatible vault/application changes
+- **MAJOR** — incompatible application changes
 - **MINOR** — new backward-compatible features
 - **PATCH** — fixes and small improvements
 - `-alpha` / `-beta` — pre-release builds
@@ -102,7 +122,7 @@ See [CHANGELOG.md](CHANGELOG.md) and [ROADMAP.md](ROADMAP.md).
 
 ## Safety during development
 
-Until the encrypted storage engine is marked stable, use only disposable test files and keep independent backups.
+Until the encrypted storage engine, filesystem layer, crash recovery, and security review are complete, use disposable test data and keep independent backups.
 
 ## Author
 

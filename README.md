@@ -58,6 +58,8 @@
 - read-only Explorer enumeration for encrypted nested folders
 - persistent authenticated range reads by entry ID
 - tray and main-window Mount/Unmount Explorer Drive controls
+- preferred drive-letter selection (`V:` through `Z:`)
+- optional auto-mount/open-Explorer behavior after unlock (off by default in alpha)
 - pre-lock unmount hook before VMK disposal
 - adapter self-tests for nested lookup, enumeration, range reads, and write denial
 - tamper and round-trip self-tests

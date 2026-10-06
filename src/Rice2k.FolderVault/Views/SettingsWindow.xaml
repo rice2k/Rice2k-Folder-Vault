@@ -70,8 +70,18 @@
                     <StackPanel>
                         <TextBlock Text="Behavior" FontSize="18" FontWeight="SemiBold"/>
                         <CheckBox x:Name="OpenExplorerAfterUnlockCheckBox"
-                                  Content="Open the vault in File Explorer after unlocking"
+                                  Content="Mount and open the read-only Explorer drive after unlocking (alpha)"
                                   Margin="0,14,0,0"/>
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="170"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Preferred drive letter" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="MountPointComboBox" Grid.Column="1" Height="32"/>
+                        </Grid>
+
                         <CheckBox x:Name="ShowWarningBeforeLockCheckBox"
                                   Content="Show warning before automatic locking"
                                   Margin="0,9,0,0"/>

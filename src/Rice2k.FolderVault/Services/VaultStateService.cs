@@ -34,7 +34,16 @@ public sealed class VaultStateService
     public void Lock(string reason)
     {
         if (_sessionKey is not null)
-            Locking?.Invoke(this, EventArgs.Empty);
+        {
+            try
+            {
+                Locking?.Invoke(this, EventArgs.Empty);
+            }
+            catch
+            {
+                // Lock must still destroy the active key even if pre-lock cleanup fails.
+            }
+        }
 
         _sessionKey?.Dispose();
         _sessionKey = null;

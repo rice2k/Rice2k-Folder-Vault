@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -19,8 +20,17 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
+      - name: Restore application
         run: dotnet restore src/Rice2k.FolderVault/Rice2k.FolderVault.csproj
 
-      - name: Build
+      - name: Restore crypto self-test
+        run: dotnet restore tests/Rice2k.FolderVault.CryptoSelfTest/Rice2k.FolderVault.CryptoSelfTest.csproj
+
+      - name: Build application
         run: dotnet build src/Rice2k.FolderVault/Rice2k.FolderVault.csproj --configuration Release --no-restore
+
+      - name: Build crypto self-test
+        run: dotnet build tests/Rice2k.FolderVault.CryptoSelfTest/Rice2k.FolderVault.CryptoSelfTest.csproj --configuration Release --no-restore
+
+      - name: Run crypto self-test
+        run: dotnet run --project tests/Rice2k.FolderVault.CryptoSelfTest/Rice2k.FolderVault.CryptoSelfTest.csproj --configuration Release --no-build

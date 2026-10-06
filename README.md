@@ -2,7 +2,7 @@
 
 **Rice2k Folder Vault** is a Windows encrypted-vault application designed to make protected files feel as easy to use as a normal folder while keeping stored data encrypted whenever the vault is locked.
 
-> Current status: **v0.2.3-alpha — encrypted nested folders working; Explorer drive mounting is next**
+> Current status: **v0.3.0-alpha — read-only Explorer drive integration implemented; Windows runtime verification pending**
 
 ## Project goals
 
@@ -22,16 +22,14 @@
 1. Start Rice2k Folder Vault.
 2. Create a portable `.rvault` container.
 3. Unlock it with the vault password.
-4. Open **Vault Contents**.
-5. Create encrypted folders and browse the vault hierarchy.
-6. Add files into the current folder; they are streamed into authenticated encrypted `FILE` records.
-7. Protected names, hierarchy, timestamps, sizes, and content-record IDs are stored in the encrypted `META` segment.
-8. Export a selected file when plaintext access is required.
-9. Lock the vault to destroy the active in-memory master-key session.
+4. Open **Vault Contents** to manage encrypted files/folders directly, or choose **Mount Explorer Drive**.
+5. The v0.3 alpha mounts the unlocked vault as a **read-only** Windows drive such as `V:\` through DokanNet.
+6. Explorer enumeration resolves names and hierarchy from encrypted `META` metadata.
+7. File reads decrypt only the requested authenticated FILE ranges; no plaintext staging file is created for mounted reads.
+8. Create/write/delete/rename through the mounted drive are denied until writable transactions are designed.
+9. Locking requests an unmount before the active in-memory VMK is destroyed.
 
-The future v0.3 filesystem layer will replace the temporary Vault Contents workflow with a normal Explorer drive such as `V:\`.
-
-## What v0.2.3-alpha implements
+## What v0.3.0-alpha implements
 
 - portable `.rvault` containers
 - random 256-bit Vault Master Key (VMK)
@@ -55,13 +53,19 @@ The future v0.3 filesystem layer will replace the temporary Vault Contents workf
 - create/browse/rename/delete encrypted folders
 - import files directly into the currently open encrypted folder
 - entry-ID based export/delete/rename so identical filenames can exist in different folders
+- read-only DokanNet Explorer filesystem adapter
+- mount/unmount lifecycle service with `WriteProtection`, Mount Manager, and current-session mounting
+- read-only Explorer enumeration for encrypted nested folders
+- persistent authenticated range reads by entry ID
+- tray and main-window Mount/Unmount Explorer Drive controls
+- pre-lock unmount hook before VMK disposal
+- adapter self-tests for nested lookup, enumeration, range reads, and write denial
 - tamper and round-trip self-tests
 
 ## Important alpha limitations
 
 The following are **not complete**:
 
-- Explorer virtual-drive mounting
 - crash-safe transactional storage suitable for production
 - recovery keys
 - full Windows lock/sleep/sign-out hooks
@@ -113,7 +117,7 @@ Rice2k-Folder-Vault/
 - .NET AES-GCM, HKDF, RNG and constant-time cryptographic helpers
 - Konscious.Security.Cryptography.Argon2 for Argon2id
 
-A proven Windows user-mode filesystem layer will be used for v0.3 rather than writing a kernel filesystem driver.
+The v0.3 adapter uses DokanNet 2.3.0.3 rather than a custom Rice2k kernel driver. A compatible Dokany 2.x Windows runtime/driver is required to mount the Explorer drive.
 
 ## Build
 
@@ -121,6 +125,7 @@ Prerequisites:
 
 - Windows 10/11
 - .NET 8 SDK
+- Dokany 2.x runtime/driver for Explorer-drive mounting
 
 ```powershell
 dotnet restore src/Rice2k.FolderVault/Rice2k.FolderVault.csproj

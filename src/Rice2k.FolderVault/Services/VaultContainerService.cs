@@ -9,7 +9,7 @@ using Rice2k.FolderVault.Models;
 
 namespace Rice2k.FolderVault.Services;
 
-public sealed class VaultContainerService
+public sealed partial class VaultContainerService
 {
     private static readonly byte[] Magic = Encoding.ASCII.GetBytes("R2FVLT01");
     private const int HeaderLengthSize = 4;

@@ -128,7 +128,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        AutoLockText.Text = $"Preview auto-lock in {remaining.Value:mm\:ss}";
+        AutoLockText.Text = $"Preview auto-lock in {remaining.Value:mm\\:ss}";
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)

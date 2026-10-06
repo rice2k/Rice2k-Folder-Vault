@@ -1,141 +1,106 @@
 # Security Design
 
-> Status: **pre-production v0.2 alpha implementation.** Core key wrapping, metadata encryption, and streaming content-encryption primitives now exist, but the complete persistent storage/mount lifecycle has not been security-reviewed.
+> Status: **pre-production v0.2.1 alpha.** Header, metadata and persistent file records are encrypted/authenticated, but filesystem mounting, transactional crash safety, recovery, and independent review are incomplete.
 
 ## Security objective
 
-When a vault is **locked**, obtaining the vault file or storage device should not reveal protected file contents, filenames, directory names, or protected metadata without a valid unlock credential.
+While a vault is locked, possession of the `.rvault` file should not expose protected filenames, directory structure, metadata, or file contents without a valid unlock credential.
 
 ## Important boundary
 
-No desktop vault can guarantee secrecy against malware, an administrator/kernel-level attacker, memory inspection, screen/key capture, or another process with equivalent access while the vault is unlocked.
-
-The primary security boundary is therefore the locked state.
+An unlocked desktop vault cannot guarantee secrecy from malware, administrator/kernel-level attackers, memory inspection, keylogging, screen capture, or another process with equivalent access. The primary cryptographic boundary is the locked state.
 
 ## Implemented key hierarchy
 
-1. Generate a random 256-bit **Vault Master Key (VMK)**.
-2. Generate a random 256-bit Argon2id salt.
-3. Derive a 256-bit **Key Encryption Key (KEK)** from the password using Argon2id.
-4. Wrap/authenticate the VMK using AES-256-GCM.
-5. Derive domain-separated metadata/content subkeys from the VMK using HKDF-SHA256.
-6. Keep the VMK only in the unlocked in-memory session and zero its managed byte buffer on lock.
-7. Never store the plaintext password.
+1. random 256-bit VMK
+2. random 256-bit Argon2id salt
+3. password -> Argon2id -> 256-bit KEK
+4. KEK -> AES-256-GCM wrap/authenticate VMK
+5. VMK -> HKDF-SHA256 domain-separated metadata/content keys
+6. VMK retained only for the unlocked application session
+7. session VMK buffer zeroed on lock where practical
 
-Changing the password re-derives a KEK and re-wraps the same VMK. It does not require re-encrypting payload data.
+Passwords are not stored.
 
-## Current KDF parameters
+## Current Argon2id defaults
 
-The current v1-alpha defaults are:
+- memory: 65,536 KiB
+- iterations: 4
+- parallelism: 2
+- salt: 256 random bits
 
-- Argon2id
-- 65,536 KiB memory
-- 4 iterations
-- parallelism 2
-- 256-bit random per-vault salt
-
-Parameters are stored in the vault header so later releases can evolve them.
+Parameters are stored in the vault header to permit future upgrades.
 
 ## Authenticated encryption
 
 Current primitives:
 
 - AES-256-GCM for VMK wrapping
-- AES-256-GCM for metadata
-- AES-256-GCM for chunked file-content records
+- AES-256-GCM for META
+- AES-256-GCM for each FILE chunk
 - 96-bit random nonces
 - 128-bit authentication tags
+- HKDF-SHA256 for domain-separated VMK subkeys
 
-Header, metadata, and file-chunk contexts are bound through associated authenticated data.
+Associated data binds security-relevant context to each ciphertext.
+
+## Persistent file storage
+
+Imports stream plaintext from the selected source directly into an encrypted temporary FILE record. The container is then rewritten using encrypted META/FILE data.
+
+The import process does not intentionally create a plaintext staging copy.
+
+Exports intentionally create plaintext because exporting is an explicit request to take a file out of the vault. A partial plaintext file may exist while export is in progress; best-effort cleanup is performed on failure.
 
 ## Metadata confidentiality
 
-The metadata segment is encrypted. Its model includes protected names, hierarchy, logical file sizes, timestamps, and content-record identifiers.
+Protected metadata includes names, hierarchy identifiers, logical file lengths, timestamps, and FILE record identifiers. It is encrypted in META.
 
-Outer-container information still leaks unavoidable facts such as:
+Visible outer information includes the vault's existence, approximate total size, format version, KDF/cipher identifiers, and non-secret KDF parameters.
 
-- a vault file exists
-- approximate physical size
-- format/KDF identifiers and parameters
+## Authentication scope and corruption detection
 
-## File-content encryption
+Unlock authenticates the wrapped VMK and META.
 
-The content service encrypts files in independent chunks (1 MiB default). Each content record receives a domain-separated HKDF-derived key and each chunk has an independent AES-GCM nonce/tag.
+FILE records are authenticated on access. This keeps unlock cost independent of total stored file content. A health-check feature should later scan every FILE record to proactively find corruption.
 
-Associated data binds each chunk to:
+The self-test currently exercises:
 
-- vault ID
-- content-record ID
-- chunk index
-- chunk length
-- full plaintext file length
+- wrong-password rejection
+- wrapped-VMK authentication-tag tampering
+- META tampering
+- standalone FILE tampering
+- persistent stored FILE tampering
+- multi-chunk round trip
+- empty-file round trip
+- persistent import/export
+- duplicate-name rejection
+- password re-wrap with content preserved
 
-## Recovery key
+## Memory limitations
 
-Not implemented yet.
+The implementation zeroes byte arrays containing VMKs, derived keys, decrypted chunk buffers, and other sensitive transient data where practical.
 
-When added, recovery must be another independent VMK-wrapping credential, never a vendor backdoor.
+WPF password controls ultimately expose managed strings for Argon2 processing, and .NET cannot guarantee erasure of every historical managed-memory copy. This limitation must be treated honestly in the threat model.
 
-## Memory handling
+## Crash/power-loss limitation
 
-Sensitive key material should:
+The current alpha uses replacement-container rewrites but does not yet implement a formal journal, fsync/rename durability protocol across all supported Windows/storage environments, or automatic rollback.
 
-- exist only while needed
-- be cleared after lock/operation where practical
-- never be logged
-- never be serialized into diagnostics
+Do not represent v0.2.x as production-safe storage.
 
-The current implementation uses `CryptographicOperations.ZeroMemory` for managed key/plaintext buffers where practical. .NET cannot guarantee that all historical managed-memory copies are unrecoverable, especially password strings produced by WPF controls.
+## Recovery
 
-## Password guessing
+Recovery-key support is not implemented. When added it must be an independent VMK-wrapping credential, not a vendor backdoor.
 
-Argon2id is the primary defense against offline password guessing. UI delay/backoff may be added later but cannot replace a strong memory-hard KDF.
+## Filesystem mount
 
-## Vault header
-
-The implemented v1-alpha header contains:
-
-- magic/version identity
-- format version
-- vault ID
-- KDF identifier/parameters/salt
-- cipher-suite identifier
-- AES-GCM wrapped VMK
-- nonce/tag
-
-The wrapped VMK uses authenticated associated data covering the security-relevant header parameters.
-
-See [VAULT-FORMAT.md](VAULT-FORMAT.md).
-
-## Lock sequence
-
-Current alpha lock behavior destroys the in-memory VMK session object.
-
-The final lock sequence must:
-
-1. stop new writes
-2. handle open file handles according to policy
-3. flush encrypted writes
-4. commit authenticated metadata
-5. unmount the virtual filesystem
-6. clear active key material
-7. only then show the vault as locked
-
-## Tamper detection
-
-The self-test exercises:
-
-- incorrect password rejection
-- wrapped-VMK tag tampering
-- encrypted metadata tampering
-- chunked file-content tampering
-- password re-wrap while preserving encrypted metadata
-- empty-file and multi-chunk content round trips
+The future Windows filesystem layer is an access mechanism, not the encryption boundary. A vault must remain encrypted at rest regardless of how it is mounted.
 
 ## Backups
 
-Encryption does not protect against deletion, corruption, storage failure, or ransomware. Vaults still require independent backups.
+Encryption does not prevent deletion, corruption, drive failure, ransomware, or accidental overwrite. Independent backups remain necessary.
 
 ## Release rule
 
-No build should be described as production-ready until persistent storage integration, filesystem mounting, recovery behavior, crash testing, and security review are complete.
+Production-ready claims require at minimum filesystem lifecycle completion, crash/power-loss testing, recovery behavior, migration testing, and independent security review.

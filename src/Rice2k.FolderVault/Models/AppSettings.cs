@@ -11,6 +11,6 @@ public sealed class AppSettings
     public bool LockAtShutdownOrRestart { get; set; } = true;
     public bool ShowWarningBeforeLock { get; set; } = true;
     public int WarningSeconds { get; set; } = 30;
-    public bool OpenExplorerAfterUnlock { get; set; } = true;
+    public bool OpenExplorerAfterUnlock { get; set; }
     public string PreferredMountPoint { get; set; } = "V:";
 }

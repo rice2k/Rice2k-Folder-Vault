@@ -2,7 +2,7 @@
 
 **Rice2k Folder Vault** is a Windows encrypted-vault application designed to make protected files feel as easy to use as a normal folder while keeping stored data encrypted whenever the vault is locked.
 
-> Current status: **v0.2.2-alpha — encrypted file maintenance working; Explorer drive mounting is next**
+> Current status: **v0.2.3-alpha — encrypted nested folders working; Explorer drive mounting is next**
 
 ## Project goals
 
@@ -23,14 +23,15 @@
 2. Create a portable `.rvault` container.
 3. Unlock it with the vault password.
 4. Open **Vault Contents**.
-5. Add files; they are streamed into authenticated encrypted `FILE` records.
-6. Protected filenames and file metadata are stored in the encrypted `META` segment.
-7. Export a selected file when plaintext access is required.
-8. Lock the vault to destroy the active in-memory master-key session.
+5. Create encrypted folders and browse the vault hierarchy.
+6. Add files into the current folder; they are streamed into authenticated encrypted `FILE` records.
+7. Protected names, hierarchy, timestamps, sizes, and content-record IDs are stored in the encrypted `META` segment.
+8. Export a selected file when plaintext access is required.
+9. Lock the vault to destroy the active in-memory master-key session.
 
 The future v0.3 filesystem layer will replace the temporary Vault Contents workflow with a normal Explorer drive such as `V:\`.
 
-## What v0.2.2-alpha implements
+## What v0.2.3-alpha implements
 
 - portable `.rvault` containers
 - random 256-bit Vault Master Key (VMK)
@@ -50,6 +51,10 @@ The future v0.3 filesystem layer will replace the temporary Vault Contents workf
 - encrypted metadata rename without decrypting file payloads
 - file deletion with encrypted record compaction
 - manual vault compaction that drops unreferenced encrypted FILE records
+- encrypted nested directory entries and hierarchy
+- create/browse/rename/delete encrypted folders
+- import files directly into the currently open encrypted folder
+- entry-ID based export/delete/rename so identical filenames can exist in different folders
 - tamper and round-trip self-tests
 
 ## Important alpha limitations
@@ -57,7 +62,6 @@ The future v0.3 filesystem layer will replace the temporary Vault Contents workf
 The following are **not complete**:
 
 - Explorer virtual-drive mounting
-- directory creation and nested folders in the UI
 - crash-safe transactional storage suitable for production
 - recovery keys
 - full Windows lock/sleep/sign-out hooks

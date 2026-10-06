@@ -2,17 +2,17 @@
 
 ## Overview
 
-Rice2k Folder Vault separates presentation, Windows integration, key management, encrypted storage, and the future filesystem layer.
+Rice2k Folder Vault separates the WPF interface, Windows lifecycle integration, key management, encrypted storage, and the future Explorer filesystem adapter.
 
 ```text
 +--------------------------------------------------+
 |                  WPF Desktop UI                  |
-| main window | unlock | settings | vault manager |
+| unlock | settings | vault contents | manager     |
 +---------------------------+----------------------+
                             |
 +---------------------------v----------------------+
 |              Application / Vault Controller      |
-| state | policies | timers | lifecycle decisions |
+| session | policy | timer | lifecycle decisions  |
 +----------+----------------+----------------------+
            |                |
 +----------v---------+ +----v----------------------+
@@ -24,153 +24,97 @@ Rice2k Folder Vault separates presentation, Windows integration, key management,
                          |
 +------------------------v--------------------------+
 |            Encrypted Vault Storage Engine         |
-| header | metadata | chunked content | recovery   |
+| header | META | persistent FILE records          |
 +------------------------+--------------------------+
                          |
 +------------------------v--------------------------+
-|          Virtual Filesystem / Mount Layer         |
+|          Future Virtual Filesystem Adapter        |
 | Explorer-visible drive while vault is unlocked   |
 +---------------------------------------------------+
 ```
 
-## Current implementation — v0.2.0-alpha
+## Current implementation — v0.2.1-alpha
 
 Implemented:
 
-- WPF desktop shell and tray foundation
-- local registry of known vault-container paths
-- `.rvault` creation UI
-- versioned vault header
-- random 256-bit Vault Master Key
-- Argon2id password key derivation
-- AES-256-GCM master-key wrapping
-- authenticated encrypted metadata segment
-- HKDF-SHA256 metadata subkey
-- chunked streaming file-content encryption service
-- HKDF-SHA256 per-content-record keys
-- password change by master-key re-wrap
-- session-owned VMK cleared on lock
-- crypto self-test project
+- WPF shell and notification-area host
+- local registry of known vault paths
+- vault creation/unlock workflow
+- session-owned VMK lifecycle
+- versioned/authenticated header
+- Argon2id password derivation
+- AES-256-GCM VMK wrapping
+- HKDF-SHA256 subkeys
+- encrypted META segment
+- persistent chunked FILE records
+- encrypted import/container rewrite
+- authenticated file export
+- password re-wrap engine
+- Vault Contents alpha UI
+- storage/crypto self-tests
 
 Still pending:
 
-- persistent FILE-record append/rewrite integration
-- metadata transaction/compaction layer
-- virtual filesystem mount
+- password-change UI
+- rename/delete/compaction
+- nested directory UI
+- crash-safe transaction/journal design
+- virtual filesystem mounting
 - complete Windows lifecycle hooks
 - recovery key
-- production security review
+- security review
 
-## UI
+## Storage write model
 
-Responsibilities:
+The current alpha uses full-container rewrite for metadata-changing imports:
 
-- display state
-- collect explicit user commands
-- show security warnings
-- expose settings
-- never retain raw master-key material
+1. encrypt new content to a temporary encrypted record
+2. authenticate/read existing META
+3. build revised META in memory
+4. write a temporary encrypted replacement container
+5. copy old FILE records and append the new record
+6. flush
+7. replace the original container
 
-## Vault controller
-
-Responsibilities:
-
-- own the locked/unlocked state machine
-- coordinate unlock and lock sequences
-- enforce policy
-- coordinate filesystem mount/unmount
-- coordinate Windows lifecycle events
+This is intentionally simple for early correctness. Before production, the design needs stronger crash/power-loss guarantees, rollback/recovery, and compaction.
 
 ## Key management
 
-Responsibilities:
+The UI does not own the VMK. `VaultStateService` owns a disposable `VaultSessionKey` while unlocked.
 
-- create the random Vault Master Key
-- derive password KEKs using Argon2id
-- wrap/unwrap the VMK with AES-GCM
-- derive domain-separated subkeys using HKDF-SHA256
-- manage future recovery-key slots
-- minimize secret lifetime in memory
+A lock:
 
-## Storage engine
+- disposes the session key
+- zeroes the managed VMK byte buffer
+- clears active vault/session state
 
-Responsibilities:
+## File access today
 
-- parse/write versioned vault headers
-- authenticate encrypted metadata
-- stream encrypted file chunks
-- maintain record/index metadata
-- commit changes crash-safely
-- validate integrity before exposing data
-- migrate supported vault-format versions explicitly
+The temporary **Vault Contents** UI calls encrypted storage services directly for import/export.
 
-## Filesystem adapter
+The future filesystem adapter will translate normal Windows file operations to storage-engine operations. It must not weaken the cryptographic boundary.
 
-Responsibilities:
+## Filesystem adapter requirements
 
-- expose the unlocked vault through normal Windows file operations
-- map Explorer operations to encrypted storage
-- track open handles
-- flush encrypted writes before unmounting
-- support safe read-only recovery when required
+The v0.3 adapter must support:
 
-## State machine
-
-```text
-Locked
-  |
-  | password -> Argon2id -> authenticated VMK unwrap
-  v
-Unlocking
-  |
-  | metadata authentication + future mount
-  v
-Unlocked
-  |
-  | manual/policy/system event
-  v
-Locking
-  |
-  | flush + future unmount + VMK disposal
-  v
-Locked
-```
-
-Failure during **Unlocking** returns to **Locked**.
-
-Failure during future **Locking** must be surfaced clearly; the UI must never display "Locked" while a usable mount remains active.
-
-## Dependency rule
-
-Security-sensitive implementation uses platform/reviewed primitives. Security-critical dependencies must have a documented reason.
-
-Current external crypto dependency:
-
-- `Konscious.Security.Cryptography.Argon2` — Argon2id password derivation
-
-AES-GCM, HKDF, RNG, constant-time comparison, and memory-zero helpers use .NET cryptography APIs.
+- normal Explorer enumeration
+- open/read/write/create/rename/delete
+- random-access IO
+- open-handle tracking
+- flush semantics
+- safe unmount
+- lock refusal/warning when handles cannot safely close
+- read-only recovery mode
 
 ## Logging boundary
 
-Logs may contain:
+Logs may contain application version, non-sensitive error categories, timings, and compatibility information.
 
-- application version
-- non-sensitive error category
-- state-transition type
-- elapsed durations
-- operating-system compatibility information
+They must not contain passwords, recovery keys, VMKs, derived keys, protected names, decrypted metadata, or file contents.
 
-Logs must not contain:
+## Compatibility
 
-- passwords
-- recovery keys
-- encryption keys
-- decrypted vault metadata
-- protected filenames
-- protected file contents
-
-## Version compatibility
-
-Application version and vault-format version are separate. Incompatible vault-format changes require explicit versioning and migration behavior.
+Application and vault-format versions are separate. Format migrations must be explicit and recoverable.
 
 See [VAULT-FORMAT.md](VAULT-FORMAT.md).
